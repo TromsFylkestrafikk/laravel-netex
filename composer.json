@@ -8,13 +8,22 @@
         "routedata"
     ],
     "require": {
-        "illuminate/support": "^8.12",
-        "illuminate/console": "^8.12"
+        "php": "^7.3|^8.0",
+        "illuminate/support": "^8.0",
+        "illuminate/console": "^8.0",
+        "illuminate/database": "^8.0"
     },
-
+    "require-dev": {},
     "autoload": {
         "psr-4": {
-            "TromsFylkestrafikk\\Netex\\": "src"
+            "TromsFylkestrafikk\\Netex\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "TromsFylkestrafikk\\Netex\\NetexServiceProvider"
+            ]
         }
     },
     "license": "GPLv2",
@@ -24,5 +33,6 @@
             "email": "kaare.slettnes@tffk.no"
         }
     ],
-    "minimum-stability": "dev"
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }
