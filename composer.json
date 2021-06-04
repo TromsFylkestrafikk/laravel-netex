@@ -1,0 +1,28 @@
+{
+    "name": "tromsfylkestrafikk/laravel-netex",
+    "description": "NeTEX parser for Laravel",
+    "type": "library",
+    "keywords": [
+        "laravel",
+        "netex",
+        "routedata"
+    ],
+    "require": {
+        "illuminate/support": "^8.12",
+        "illuminate/console": "^8.12"
+    },
+
+    "autoload": {
+        "psr-4": {
+            "TromsFylkestrafikk\\Netex\\": "src"
+        }
+    },
+    "license": "GPLv2",
+    "authors": [
+        {
+            "name": "Kåre Slettnes",
+            "email": "kaare.slettnes@tffk.no"
+        }
+    ],
+    "minimum-stability": "dev"
+}
