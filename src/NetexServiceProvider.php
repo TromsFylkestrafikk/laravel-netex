@@ -5,6 +5,7 @@ namespace TromsFylkestrafikk\Netex;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Log;
 use TromsFylkestrafikk\Netex\Console\ImportStops;
+use TromsFylkestrafikk\Netex\Console\ImportRouteData;
 
 class NetexServiceProvider extends ServiceProvider
 {
@@ -30,6 +31,7 @@ class NetexServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 ImportStops::class,
+                ImportRouteData::class,
             ]);
         }
     }
