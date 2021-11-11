@@ -1,8 +1,8 @@
 # NeTEx import and handling in laravel
 
-This package is capable of importing stop places and in the future
-also route data in NeTEx format. The end result is a set of relational
-database tables and Eloquent models.
+This package is capable of importing stop places and route data in NeTEx
+format. The end result is a set of relational database tables and Eloquent
+models.
 
 ## Install
 
@@ -32,6 +32,7 @@ php artisan migrate
 
 The following artisan commands are included for import of NeTEx data:
 - `netex:importstops` – Import stop places from XML file.
+- `netex:importroutedata` – Import route data from XML files.
 
 See `php artisan <COMMAND> --help` for further usage.
 
