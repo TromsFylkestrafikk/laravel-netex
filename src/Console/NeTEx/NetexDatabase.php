@@ -8,10 +8,10 @@ use Exception;
 
 class NetexDatabase
 {
-  /**
-   * Constructor.
-   */
-    function __construct()
+    /**
+     * Constructor.
+     */
+    public function __construct()
     {
         // Truncate all tables from the main NeTEx file.
         $this->truncateTable('netex_calendar');
@@ -46,8 +46,7 @@ class NetexDatabase
         try {
             DB::table($name)->truncate();
             Log::debug('Table truncated: ' . $name);
-        }
-        catch(Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to truncate table (' . $name . ')! ' . $e->getMessage());
             exit(1);
         }
@@ -212,7 +211,6 @@ class NetexDatabase
         foreach ($data as $id => $vs) {
             foreach ($vs['journeys'] as $journeyID => $journey) {
                 DB::table('netex_vehicle_schedules')->insert([
-//                    'id' => $id,
                     'calendar_ref' => $vs['DayTypeRef'],
                     'vehicle_journey_ref' => $journey['VehicleJourneyRef']
                 ]);
@@ -321,5 +319,3 @@ class NetexDatabase
         Log::info('New routes added to database: ' . count($data));
     }
 }
-
-?>
