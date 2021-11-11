@@ -274,7 +274,7 @@ class NetexFileParser
         $start = DateTime::createFromFormat('Y-m-d\TH:i:s', $from);
         $end = DateTime::createFromFormat('Y-m-d\TH:i:s', $to);
 
-        if (($start === false) || ($end === false)) {
+        if (!$start || !$end) {
             Log::error('Invalid time period: ' . $from . ' - ' . $to);
             die("Time period error! FROM: " . $from . ' TO: ' . $to . PHP_EOL);
         }
@@ -333,7 +333,7 @@ class NetexFileParser
         Log::debug('Parsing NeTEx line file ' . $filename);
 
         $doc = new DOMDocument('1.0', 'UTF-8');
-        $xml = new XMLReader;
+        $xml = new XMLReader();
         $xml->open($filename);
 
         while ($xml->read()) {
