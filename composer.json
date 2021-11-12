@@ -12,14 +12,20 @@
         "guzzlehttp/guzzle": "^7.0.1",
         "illuminate/support": "^8.0",
         "illuminate/console": "^8.0",
-        "illuminate/database": "^8.0"
+        "illuminate/database": "^8.0",
+        "tromsfylkestrafikk/christmas-tree-parser": "dev-master"
     },
-    "require-dev": {},
     "autoload": {
         "psr-4": {
             "TromsFylkestrafikk\\Netex\\": "src/"
         }
     },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/TromsFylkestrafikk/christmas-tree-parser"
+        }
+    ],
     "extra": {
         "laravel": {
             "providers": [

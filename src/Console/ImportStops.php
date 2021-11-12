@@ -10,7 +10,7 @@ use TromsFylkestrafikk\Netex\Models\StopPlace;
 use TromsFylkestrafikk\Netex\Models\GroupOfStopPlaces;
 use TromsFylkestrafikk\Netex\Models\TopographicPlace;
 use TromsFylkestrafikk\Netex\Models\StopQuay;
-use TromsFylkestrafikk\Netex\Xml\ChristmasTreeParser;
+use TromsFylkestrafikk\Xml\ChristmasTreeParser;
 
 class ImportStops extends Command
 {
