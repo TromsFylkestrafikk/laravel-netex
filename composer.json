@@ -2,10 +2,19 @@
     "name": "tromsfylkestrafikk/laravel-netex",
     "description": "NeTEX parser for Laravel",
     "type": "library",
+    "license": "GPL-3.0-or-later",
+    "minimum-stability": "dev",
+    "prefer-stable": true,
     "keywords": [
         "laravel",
         "netex",
         "routedata"
+    ],
+    "authors": [
+        {
+            "name": "Kåre Slettnes",
+            "email": "kaare.slettnes@tffk.no"
+        }
     ],
     "require": {
         "php": "^7.3|^8.0",
@@ -14,6 +23,13 @@
         "illuminate/database": "^8.0",
         "illuminate/support": "^8.0",
         "tromsfylkestrafikk/christmas-tree-parser": "dev-master"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^3.6",
+        "phpmd/phpmd": "@stable",
+        "phpstan/phpstan": "^1.2",
+        "nunomaduro/larastan": "^1.0",
+        "orchestra/testbench": "^6.23"
     },
     "autoload": {
         "psr-4": {
@@ -32,14 +48,5 @@
                 "TromsFylkestrafikk\\Netex\\NetexServiceProvider"
             ]
         }
-    },
-    "license": "GPL-3.0-or-later",
-    "authors": [
-        {
-            "name": "Kåre Slettnes",
-            "email": "kaare.slettnes@tffk.no"
-        }
-    ],
-    "minimum-stability": "dev",
-    "prefer-stable": true
+    }
 }

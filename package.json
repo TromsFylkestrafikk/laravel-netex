@@ -1,0 +1,24 @@
+{
+    "name": "laravel-netex",
+    "version": "0.0.2-dev",
+    "description": "NeTEx parser and database for laravel",
+    "main": "index.js",
+    "contributors": [
+        {
+            "name": "Kåre Slettnes",
+            "email": "kaare.slettnes@tffk.no"
+        },
+        {
+            "name": "Kyrre Hansen",
+            "email": "kyrre.andr.hansen@tffk.no"
+        }
+    ],
+    "license": "GPL-3.0-or-later",
+    "scripts": {
+        "prepare": "husky install"
+    },
+    "dependencies": {
+        "husky": "^7.0.4",
+        "lint-staged": "^12.3.2"
+    }
+}

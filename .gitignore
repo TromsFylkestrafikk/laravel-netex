@@ -1,5 +1,7 @@
-composer.lock
+/composer.lock
+/package-lock.json
 /vendor/
+/node_modules
 
 # Code indexing and editor tools
 .ac-php-conf.json
