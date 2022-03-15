@@ -14,7 +14,7 @@ class NetexActiveTables extends Migration
     public function up()
     {
         Schema::create('netex_active_journeys', function (Blueprint $table) {
-            $table->id()->comment('Unique ID for journey / day');
+            $table->id()->comment('Unique ID for journey/day');
             $table->char('journey_ref', 45)->comment('Journey identifier');
             $table->char('name', 45)->comment('Journey name');
             $table->date('date')->comment('The date this journey belongs to. Not necessary run on this day');
