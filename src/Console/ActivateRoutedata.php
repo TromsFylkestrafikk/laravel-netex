@@ -5,6 +5,7 @@ namespace TromsFylkestrafikk\Netex\Console;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use TromsFylkestrafikk\Netex\Models\ActiveJourney;
 
 class ActivateRoutedata extends Command
@@ -53,20 +54,34 @@ class ActivateRoutedata extends Command
     public function handle()
     {
         $this->initDates();
-        $this->activate();
+        $this->activateDays();
         return static::SUCCESS;
     }
 
-    protected function activate()
+    protected function activateDays()
     {
         $date = new Carbon($this->fromDate);
         $toDate = new Carbon($this->toDate);
 
         while ($date <= $toDate) {
-            $rawTrips = $this->getRawTrips($date->format('Y-m-d'));
-            $this->info(sprintf("Trips found for day %s: %d", $date->format('Y-m-d'), $rawTrips->count()));
+            $rawJourneys = $this->getRawJourneys($date->format('Y-m-d'));
+            $this->info(sprintf("Journeys found for day %s: %d", $date->format('Y-m-d'), $rawJourneys->count()));
+            $this->activateJourneys($rawJourneys);
             $date->addDay();
         }
+    }
+
+    protected function activateJourneys(Collection $rawJourneys)
+    {
+        foreach ($rawJourneys as $rawJourney) {
+            $this->activateJourney($rawJourney);
+        }
+    }
+
+    protected function activateJourney($rawJourney)
+    {
+        $journey = new ActiveJourney((array) $rawJourney);
+        $journey->save();
     }
 
     protected function initDates()
@@ -86,22 +101,22 @@ class ActivateRoutedata extends Command
      *
      * @return \Illuminate\Support\Collection
      */
-    protected function getRawTrips($date)
+    protected function getRawJourneys($date)
     {
         return DB::table('netex_vehicle_journeys', 'journey')
             ->select([
+                'cal.date',
                 'journey.id as journey_ref',
                 'journey.name',
-                'journey.operator_ref',
                 'journey.private_code',
-                'journey.journey_pattern_ref',
                 'route.direction',
+                'journey.journey_pattern_ref',
+                'journey.operator_ref',
+                'line.public_code as line_public_code',
+                'line.private_code as line_private_code',
                 'line.name as line_name',
                 'line.transport_mode',
                 'line.transport_submode',
-                'line.public_code as line_public_code',
-                'line.private_code as line_private_code',
-                'cal.date',
             ])
             ->join('netex_journey_patterns as pattern', 'journey.journey_pattern_ref', '=', 'pattern.id')
             ->join('netex_routes as route', 'pattern.route_ref', 'route.id')

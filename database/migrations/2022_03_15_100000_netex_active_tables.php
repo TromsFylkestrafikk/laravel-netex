@@ -15,20 +15,21 @@ class NetexActiveTables extends Migration
     {
         Schema::create('netex_active_journeys', function (Blueprint $table) {
             $table->id()->comment('Unique ID for journey/day');
+            $table->date('date')->comment('The date this journey belongs to. The actual journey is not necessary run on this day');
             $table->char('journey_ref', 45)->comment('Journey identifier');
             $table->char('name', 45)->comment('Journey name');
-            $table->date('date')->comment('The date this journey belongs to. Not necessary run on this day');
             $table->unsignedInteger('private_code')->comment('Local journey code. Usually four digit code.');
+            $table->char('direction', 45)->comment("'inbound' or 'outbound'");
             $table->unsignedInteger('operator_ref');
+            $table->unsignedInteger('line_private_code')->comment('Internal numeric line number');
+            $table->char('line_public_code', 45)->comment('Line number as shown to the public');
             $table->char('transport_mode', 45)->comment("'bus', 'water', 'rail' or similar");
             $table->char('transport_submode', 45)->comment('Detailed type of transport mode');
-            $table->char('line_public_code', 45)->comment('Line number as shown to the public');
-            $table->unsignedInteger('line_private_code')->comment('Internal numeric line number');
-            $table->char('first_stop_quay', 64);
-            $table->char('last_stop_quay', 64);
+            $table->char('first_stop_quay', 64)->nullable();
+            $table->char('last_stop_quay', 64)->nullable();
             $table->timestamp('timestamp_start')->nullable()->comment('Departure time from first stop');
             $table->timestamp('timestamp_end')->nullable()->comment('Arrival time on last stop');
-            $table->char('direction', 45);
+            $table->timestamps();
         });
 
         Schema::create('netex_active_calls', function (Blueprint $table) {
@@ -38,10 +39,11 @@ class NetexActiveTables extends Migration
             $table->unsignedInteger('order')->comment('Order of call during journey');
             $table->char('stop_quay_ref', 64)->comment('Stop place quay ID');
             $table->char('stop_place_name')->comment('Stop place name');
-            $table->char('destination')->comment('Interim destination. Often changed during a journey');
+            $table->char('destination')->comment('Interim/current destination. Often changed during a journey');
             $table->timestamp('call_timestamp')->index()->comment('departure or arrival time of call');
             $table->timestamp('arrival_time')->nullable()->comment('Full iso datetime of arrival');
             $table->timestamp('departure_time')->nullable()->comment('Full iso datetime of departure');
+            $table->timestamps();
         });
     }
 
