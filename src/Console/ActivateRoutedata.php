@@ -54,6 +54,7 @@ class ActivateRoutedata extends Command
     public function handle()
     {
         $this->initDates();
+        $this->deactivateDays();
         $this->activateDays();
         return static::SUCCESS;
     }
@@ -82,6 +83,18 @@ class ActivateRoutedata extends Command
     {
         $journey = new ActiveJourney((array) $rawJourney);
         $journey->save();
+    }
+
+    protected function deactivateDays()
+    {
+        $date = new Carbon($this->fromDate);
+        $toDate = new Carbon($this->toDate);
+
+        $this->info('Deactivating days …');
+        while ($date <= $toDate) {
+            DB::table('netex_active_journeys')->whereDate('date', $date)->delete();
+            $date->addDay();
+        }
     }
 
     protected function initDates()
@@ -122,7 +135,7 @@ class ActivateRoutedata extends Command
             ->join('netex_routes as route', 'pattern.route_ref', 'route.id')
             ->join('netex_lines as line', 'journey.line_ref', 'line.id')
             ->join('netex_calendar as cal', 'journey.calendar_ref', 'cal.ref')
-            ->where('cal.date', '=', $date)
+            ->whereDate('cal.date', '=', $date)
             ->orderBy('line.private_code')
             ->orderBy('journey.private_code')
             ->get();

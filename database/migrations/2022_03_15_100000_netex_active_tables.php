@@ -15,7 +15,7 @@ class NetexActiveTables extends Migration
     {
         Schema::create('netex_active_journeys', function (Blueprint $table) {
             $table->id()->comment('Unique ID for journey/day');
-            $table->date('date')->comment('The date this journey belongs to. The actual journey is not necessary run on this day');
+            $table->date('date')->index()->comment('The date this journey belongs to. The actual journey is not necessary run on this day');
             $table->char('journey_ref', 45)->comment('Journey identifier');
             $table->char('name', 45)->comment('Journey name');
             $table->unsignedInteger('private_code')->comment('Local journey code. Usually four digit code.');
@@ -27,8 +27,8 @@ class NetexActiveTables extends Migration
             $table->char('transport_submode', 45)->comment('Detailed type of transport mode');
             $table->char('first_stop_quay', 64)->nullable();
             $table->char('last_stop_quay', 64)->nullable();
-            $table->timestamp('timestamp_start')->nullable()->comment('Departure time from first stop');
-            $table->timestamp('timestamp_end')->nullable()->comment('Arrival time on last stop');
+            $table->timestamp('start_at')->nullable()->comment('Departure time from first stop');
+            $table->timestamp('end_at')->nullable()->comment('Arrival time on last stop');
             $table->timestamps();
         });
 
