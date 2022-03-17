@@ -2,9 +2,11 @@
 
 namespace TromsFylkestrafikk\Netex\Services;
 
+use Closure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use TromsFylkestrafikk\Netex\Models\ActiveJourney;
 use TromsFylkestrafikk\Netex\Models\ActiveCall;
 
@@ -42,6 +44,16 @@ class RouteActivation
     protected $callFillable;
 
     /**
+     * @var \Closure|null
+     */
+    protected $dayHandler;
+
+    /**
+     * @var \Closure|null
+     */
+    protected $journeyHandler;
+
+    /**
      * Create a new command instance.
      *
      * @return void
@@ -68,12 +80,19 @@ class RouteActivation
             $dateStr = $date->format('Y-m-d');
             $rawJourneys = $this->getRawJourneys($dateStr);
             $this->activateJourneys($dateStr, $rawJourneys);
+            $this->invoke($this->dayHandler, $dateStr);
             $date->addDay();
         }
         // Write last prepared records;
         $this->addCallRecord();
+        return $this;
     }
 
+    /**
+     * Deactivate route set for date period
+     *
+     * @return $this
+     */
     public function deactivate()
     {
         $date = new Carbon($this->fromDate);
@@ -84,15 +103,44 @@ class RouteActivation
                 ->join('netex_active_journeys as journey', 'call.active_journey_id', '=', 'journey.id')
                 ->whereDate('journey.date', $date)->delete();
             DB::table('netex_active_journeys')->whereDate('date', $date)->delete();
+            $this->invoke($this->dayHandler, $date->format('Y-m-d'));
             $date->addDay();
         }
+        return $this;
+    }
+
+    /**
+     * Add handler for completing a full day of vehicle journeys.
+     *
+     * @param Closure $closure
+     *
+     * @return $this
+     */
+    public function onDay(Closure $closure)
+    {
+        $this->dayHandler = $closure;
+        return $this;
+    }
+
+    /**
+     * Add handler for completing a single journey.
+     *
+     * @param Closure $closure
+     *
+     * @return $this
+     */
+    public function onJourney(Closure $closure)
+    {
+        $this->journeyHandler = $closure;
+        return $this;
     }
 
     protected function activateJourneys($date, Collection $rawJourneys)
     {
         foreach ($rawJourneys as $rawJourney) {
             $rawJourney->date = $date;
-            $this->activateJourney($rawJourney);
+            $journey = $this->activateJourney($rawJourney);
+            $this->invoke($this->journeyHandler, $journey);
         }
     }
 
@@ -101,6 +149,7 @@ class RouteActivation
         $journey = new ActiveJourney((array) $rawJourney);
         $journey->save();
         $this->activateJourneyCalls($journey);
+        return $journey;
     }
 
     protected function activateJourneyCalls(ActiveJourney $journey)
@@ -222,5 +271,12 @@ class RouteActivation
             ->where('ptime.vehicle_journey_ref', '=', $journeyRef)
             ->orderBy('patstop.order')
             ->get();
+    }
+
+    protected function invoke(Closure $callback = null)
+    {
+        if (is_callable($callback)) {
+            call_user_func_array($callback, array_slice(func_get_args(), 1));
+        }
     }
 }

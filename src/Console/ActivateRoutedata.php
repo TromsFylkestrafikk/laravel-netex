@@ -23,36 +23,9 @@ class ActivateRoutedata extends Command
      */
     protected $description = 'Activate netex routedata for fast queries';
 
-    /**
-     * @var string
-     */
-    protected $fromDate;
+    protected $journeyCount;
 
-    /**
-     * @var string
-     */
-    protected $toDate;
-
-    /**
-     * Call records not yet written to persistent storage.
-     *
-     * @var array[]
-     */
-    protected $callRecords;
-
-    /**
-     * Number of call records not yet written.
-     *
-     * @var int
-     */
-    protected $callCount;
-
-    /**
-     * Flipped version of ActiveCall::fillable.
-     *
-     * @var array
-     */
-    protected $callFillable;
+    protected $dayCount;
 
     /**
      * Create a new command instance.
@@ -72,8 +45,13 @@ class ActivateRoutedata extends Command
     public function handle()
     {
         $activatior = new RouteActivation($this->argument('from-date'), $this->argument('to-date'));
-        $activatior->deactivate();
-        $activatior->activate();
+        $activatior->deactivate()
+            ->onDay(function ($date) {
+                $this->info(sprintf("%s: Activated %d journeys", $date, $this->journeyCount));
+                $this->journeyCount = 0;
+            })
+            ->onJourney(fn () => $this->journeyCount++)
+            ->activate();
         return static::SUCCESS;
     }
 }
