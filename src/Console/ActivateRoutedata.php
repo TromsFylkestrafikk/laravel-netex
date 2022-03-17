@@ -45,6 +45,11 @@ class ActivateRoutedata extends Command
     public function handle()
     {
         $activatior = new RouteActivation($this->argument('from-date'), $this->argument('to-date'));
+        $this->info(sprintf(
+            'Activating route data between %s and %s',
+            $activatior->getFromDate(),
+            $activatior->getToDate()
+        ));
         $activatior->deactivate()
             ->onDay(function ($date) {
                 $this->info(sprintf("%s: Activated %d journeys", $date, $this->journeyCount));
@@ -52,6 +57,13 @@ class ActivateRoutedata extends Command
             })
             ->onJourney(fn () => $this->journeyCount++)
             ->activate();
+        $stats = $activatior->summary();
+        $this->info(sprintf(
+            "Activation complete. %d days, %d journeys, %d calls",
+            $stats['days'],
+            $stats['journeys'],
+            $stats['calls']
+        ));
         return static::SUCCESS;
     }
 }

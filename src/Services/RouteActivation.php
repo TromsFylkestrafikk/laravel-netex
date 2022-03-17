@@ -23,18 +23,39 @@ class RouteActivation
     protected $toDate;
 
     /**
-     * Call records not yet written to persistent storage.
+     * Non-written call records.
      *
      * @var array[]
      */
-    protected $callRecords;
+    protected $nwCallRecords;
 
     /**
-     * Number of call records not yet written.
+     * Non-written call records count.
+     *
+     * @var int
+     */
+    protected $nwCallCount;
+
+    /**
+     * Total number of calls written.
      *
      * @var int
      */
     protected $callCount;
+
+    /**
+     * Number of journeys written.
+     *
+     * @var int
+     */
+    protected $journeyCount;
+
+    /**
+     * Number of days processed.
+     *
+     * @var int
+     */
+    protected $dayCount;
 
     /**
      * Flipped version of ActiveCall::fillable.
@@ -56,10 +77,15 @@ class RouteActivation
     /**
      * Create a new command instance.
      *
+     * @param string|null $fromDate
+     * @param string|null $toDate
+     *
      * @return void
      */
     public function __construct($fromDate = null, $toDate = null)
     {
+        $fromDate = $this->sanitizeDate($fromDate);
+        $toDate = $this->sanitizeDate($toDate);
         $dates = DB::table('netex_calendar')
             ->selectRaw('min(date) as fromDate')
             ->selectRaw('max(date) as toDate')
@@ -68,18 +94,43 @@ class RouteActivation
         $this->toDate = $toDate ? min($toDate, $dates->toDate) : $dates->toDate;
     }
 
+    /**
+     * @return string
+     */
+    public function getFromDate()
+    {
+        return $this->fromDate;
+    }
+
+    /**
+     * @return string
+     */
+    public function getToDate()
+    {
+        return $this->toDate;
+    }
+
+    /**
+     * Activate route data for given dates.
+     *
+     * @return $this
+     */
     public function activate()
     {
         $date = new Carbon($this->fromDate);
         $toDate = new Carbon($this->toDate);
-        $this->callRecords = [];
+        $this->dayCount = 0;
+        $this->journeyCount = 0;
         $this->callCount = 0;
+        $this->nwCallRecords = [];
+        $this->nwCallCount = 0;
         $this->callFillable = array_flip((new ActiveCall())->getFillable());
 
         while ($date <= $toDate) {
             $dateStr = $date->format('Y-m-d');
             $rawJourneys = $this->getRawJourneys($dateStr);
             $this->activateJourneys($dateStr, $rawJourneys);
+            $this->dayCount++;
             $this->invoke($this->dayHandler, $dateStr);
             $date->addDay();
         }
@@ -89,7 +140,7 @@ class RouteActivation
     }
 
     /**
-     * Deactivate route set for date period
+     * Deactivate route set between given dates.
      *
      * @return $this
      */
@@ -98,11 +149,16 @@ class RouteActivation
         $date = new Carbon($this->fromDate);
         $toDate = new Carbon($this->toDate);
 
+        $this->dayCount = 0;
+        $this->journeyCount = 0;
+        $this->callCount = 0;
+
         while ($date <= $toDate) {
             DB::table('netex_active_calls', 'call')
                 ->join('netex_active_journeys as journey', 'call.active_journey_id', '=', 'journey.id')
                 ->whereDate('journey.date', $date)->delete();
             DB::table('netex_active_journeys')->whereDate('date', $date)->delete();
+            $this->dayCount++;
             $this->invoke($this->dayHandler, $date->format('Y-m-d'));
             $date->addDay();
         }
@@ -135,6 +191,20 @@ class RouteActivation
         return $this;
     }
 
+    /**
+     * Get a summary of processed items.
+     *
+     * @return int[]
+     */
+    public function summary()
+    {
+        return [
+            'days' => $this->dayCount,
+            'journeys' => $this->journeyCount,
+            'calls' => $this->callCount,
+        ];
+    }
+
     protected function activateJourneys($date, Collection $rawJourneys)
     {
         foreach ($rawJourneys as $rawJourney) {
@@ -149,6 +219,7 @@ class RouteActivation
         $journey = new ActiveJourney((array) $rawJourney);
         $journey->save();
         $this->activateJourneyCalls($journey);
+        $this->journeyCount++;
         return $journey;
     }
 
@@ -189,27 +260,21 @@ class RouteActivation
                 'line_private_code' => $journey->line_private_code,
             ]
         ));
-    }
-
-    protected function makeIsoDate($prev, $current)
-    {
-        if ($current < $prev) {
-            $current->addDay();
-        }
-        return $current->format('Y-m-d H:i:s');
+        $this->callCount++;
     }
 
     protected function addCallRecord($record = null)
     {
         if ($record) {
-            $this->callRecords[] = $record;
-            $this->callCount++;
+            $this->nwCallRecords[] = $record;
+            $this->nwCallCount++;
         }
 
-        if (!$record || $this->callCount > 500) {
-            DB::table('netex_active_calls')->insert($this->callRecords);
-            $this->callRecords = [];
-            $this->callCount = 0;
+        // Flush unwritten records to persistent storage.
+        if (!$record || $this->nwCallCount > 500) {
+            DB::table('netex_active_calls')->insert($this->nwCallRecords);
+            $this->nwCallRecords = [];
+            $this->nwCallCount = 0;
         }
     }
 
@@ -271,6 +336,19 @@ class RouteActivation
             ->where('ptime.vehicle_journey_ref', '=', $journeyRef)
             ->orderBy('patstop.order')
             ->get();
+    }
+
+    protected function sanitizeDate($dateStr = null)
+    {
+        return $dateStr ? (new Carbon($dateStr))->format('Y-m-d') : null;
+    }
+
+    protected function makeIsoDate($prev, $current)
+    {
+        if ($current < $prev) {
+            $current->addDay();
+        }
+        return $current->format('Y-m-d H:i:s');
     }
 
     protected function invoke(Closure $callback = null)
