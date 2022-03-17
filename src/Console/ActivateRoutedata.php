@@ -3,7 +3,7 @@
 namespace TromsFylkestrafikk\Netex\Console;
 
 use Illuminate\Console\Command;
-use TromsFylkestrafikk\Netex\Services\RouteActivation;
+use TromsFylkestrafikk\Netex\Services\RouteActivator;
 
 class ActivateRoutedata extends Command
 {
@@ -44,7 +44,7 @@ class ActivateRoutedata extends Command
      */
     public function handle()
     {
-        $activatior = new RouteActivation($this->argument('from-date'), $this->argument('to-date'));
+        $activatior = new RouteActivator($this->argument('from-date'), $this->argument('to-date'));
         $this->info(sprintf(
             'Activating route data between %s and %s',
             $activatior->getFromDate(),

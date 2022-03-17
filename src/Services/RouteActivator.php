@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 use TromsFylkestrafikk\Netex\Models\ActiveJourney;
 use TromsFylkestrafikk\Netex\Models\ActiveCall;
 
-class RouteActivation
+class RouteActivator
 {
     /**
      * @var string
@@ -67,12 +67,12 @@ class RouteActivation
     /**
      * @var \Closure|null
      */
-    protected $dayHandler;
+    protected $dayCallback;
 
     /**
      * @var \Closure|null
      */
-    protected $journeyHandler;
+    protected $journeyCallback;
 
     /**
      * Create a new command instance.
@@ -131,7 +131,7 @@ class RouteActivation
             $rawJourneys = $this->getRawJourneys($dateStr);
             $this->activateJourneys($dateStr, $rawJourneys);
             $this->dayCount++;
-            $this->invoke($this->dayHandler, $dateStr);
+            $this->invoke($this->dayCallback, $dateStr);
             $date->addDay();
         }
         // Write last prepared records;
@@ -159,7 +159,7 @@ class RouteActivation
                 ->whereDate('journey.date', $date)->delete();
             DB::table('netex_active_journeys')->whereDate('date', $date)->delete();
             $this->dayCount++;
-            $this->invoke($this->dayHandler, $date->format('Y-m-d'));
+            $this->invoke($this->dayCallback, $date->format('Y-m-d'));
             $date->addDay();
         }
         return $this;
@@ -174,7 +174,7 @@ class RouteActivation
      */
     public function onDay(Closure $closure)
     {
-        $this->dayHandler = $closure;
+        $this->dayCallback = $closure;
         return $this;
     }
 
@@ -187,7 +187,7 @@ class RouteActivation
      */
     public function onJourney(Closure $closure)
     {
-        $this->journeyHandler = $closure;
+        $this->journeyCallback = $closure;
         return $this;
     }
 
@@ -210,7 +210,7 @@ class RouteActivation
         foreach ($rawJourneys as $rawJourney) {
             $rawJourney->date = $date;
             $journey = $this->activateJourney($rawJourney);
-            $this->invoke($this->journeyHandler, $journey);
+            $this->invoke($this->journeyCallback, $journey);
         }
     }
 
