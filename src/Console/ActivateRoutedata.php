@@ -21,6 +21,13 @@ class ActivateRoutedata extends Command
                             {to-date? : Activate route data up until this date}';
 
     /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Activate netex routedata for fast queries';
+
+    /**
      * @var string
      */
     protected $fromDate;
@@ -45,11 +52,11 @@ class ActivateRoutedata extends Command
     protected $callCount;
 
     /**
-     * The console command description.
+     * Flipped version of ActiveCall::fillable.
      *
-     * @var string
+     * @var array
      */
-    protected $description = 'Activate netex routedata for fast queries';
+    protected $callFillable;
 
     /**
      * Create a new command instance.
@@ -80,6 +87,7 @@ class ActivateRoutedata extends Command
         $toDate = new Carbon($this->toDate);
         $this->callRecords = [];
         $this->callCount = 0;
+        $this->callFillable = array_flip((new ActiveCall())->getFillable());
 
         while ($date <= $toDate) {
             $dateStr = $date->format('Y-m-d');
@@ -88,6 +96,8 @@ class ActivateRoutedata extends Command
             $this->activateJourneys($dateStr, $rawJourneys);
             $date->addDay();
         }
+        // Write last prepared records;
+        $this->addCallRecord();
     }
 
     protected function activateJourneys($date, Collection $rawJourneys)
@@ -124,14 +134,24 @@ class ActivateRoutedata extends Command
             $rawCall->call_time = $rawCall->arrival_time ?: $rawCall->departure_time;
             $this->activateCall($journey, $rawCall);
         }
+        $first = $rawCalls->first();
+        $last = $rawCalls->last();
+        $journey->first_stop_quay_ref = $first->quay_ref;
+        $journey->last_stop_quay_ref = $last->quay_ref;
+        $journey->start_at = $first->departure_time;
+        $journey->end_at = $last->arrival_time;
+        $journey->save();
     }
 
     protected function activateCall(ActiveJourney $journey, $rawCall)
     {
-        $call = new ActiveCall((array) $rawCall);
-        $call->active_journey_id = $journey->id;
-        $call->line_private_code = $journey->line_private_code;
-        $call->save();
+        $this->addCallRecord(array_merge(
+            array_intersect_key((array) $rawCall, $this->callFillable),
+            [
+                'active_journey_id' => $journey->id,
+                'line_private_code' => $journey->line_private_code,
+            ]
+        ));
     }
 
     protected function makeIsoDate($prev, $current)
@@ -154,6 +174,20 @@ class ActivateRoutedata extends Command
                 ->whereDate('journey.date', $date)->delete();
             DB::table('netex_active_journeys')->whereDate('date', $date)->delete();
             $date->addDay();
+        }
+    }
+
+    protected function addCallRecord($record = null)
+    {
+        if ($record) {
+            $this->callRecords[] = $record;
+            $this->callCount++;
+        }
+
+        if (!$record || $this->callCount > 500) {
+            DB::table('netex_active_calls')->insert($this->callRecords);
+            $this->callRecords = [];
+            $this->callCount = 0;
         }
     }
 
