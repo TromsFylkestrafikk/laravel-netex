@@ -25,8 +25,8 @@ class NetexActiveTables extends Migration
             $table->char('line_public_code', 45)->comment('Line number as shown to the public');
             $table->char('transport_mode', 45)->comment("'bus', 'water', 'rail' or similar");
             $table->char('transport_submode', 45)->comment('Detailed type of transport mode');
-            $table->char('first_stop_quay', 64)->nullable();
-            $table->char('last_stop_quay', 64)->nullable();
+            $table->char('first_stop_quay_ref', 64)->nullable();
+            $table->char('last_stop_quay_ref', 64)->nullable();
             $table->timestamp('start_at')->nullable()->comment('Departure time from first stop');
             $table->timestamp('end_at')->nullable()->comment('Arrival time on last stop');
             $table->timestamps();
@@ -36,14 +36,21 @@ class NetexActiveTables extends Migration
             $table->id()->comment('Unique ID of call for stop/journey/day/order');
             $table->unsignedBigInteger('active_journey_id');
             $table->unsignedInteger('line_private_code')->comment('Internal numeric line number');
+            $table->char('destination')->default('')->comment('Interim/current destination. Often changed during a journey');
             $table->unsignedInteger('order')->comment('Order of call during journey');
-            $table->char('stop_quay_ref', 64)->comment('Stop place quay ID');
+            $table->char('quay_ref', 64)->comment('Stop place quay ID');
             $table->char('stop_place_name')->comment('Stop place name');
-            $table->char('destination')->comment('Interim/current destination. Often changed during a journey');
-            $table->timestamp('call_timestamp')->index()->comment('departure or arrival time of call');
+            $table->boolean('alighting')->default(true)->comment('Stop allows alighting');
+            $table->boolean('boarding')->default(true)->comment('Stop allows boarding');
+            $table->timestamp('call_time')->index('netex_active_calls__call_time')->comment('Arrival or departure iso datetime of call');
             $table->timestamp('arrival_time')->nullable()->comment('Full iso datetime of arrival');
             $table->timestamp('departure_time')->nullable()->comment('Full iso datetime of departure');
             $table->timestamps();
+        });
+
+        // Add indexes to existing tables to speed up raw queries.
+        Schema::table('netex_passing_times', function (Blueprint $table) {
+            $table->index('vehicle_journey_ref', 'netex_passing_times__journey_ref');
         });
     }
 
@@ -56,5 +63,8 @@ class NetexActiveTables extends Migration
     {
         Schema::dropIfExists('netex_active_journeys');
         Schema::dropIfExists('netex_active_calls');
+        Schema::table('netex_passing_times', function (Blueprint $table) {
+            $table->dropIndex('netex_passing_times__journey_ref');
+        });
     }
 }
