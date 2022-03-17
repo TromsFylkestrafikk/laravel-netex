@@ -3,12 +3,13 @@
 namespace TromsFylkestrafikk\Netex\Console;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
-use Symfony\Component\Console\Helper\ProgressBar;
 use TromsFylkestrafikk\Netex\Services\RouteActivator;
+use TromsFylkestrafikk\Netex\Console\Traits\ActivateProgress;
 
 class DeactivateRoutedata extends Command
 {
+    use ActivateProgress;
+
     /**
      * The name and signature of the console command.
      *
@@ -29,11 +30,6 @@ class DeactivateRoutedata extends Command
      * @var \TromsFylkestrafikk\Netex\Services\RouteActivator
      */
     protected $activator;
-
-    /**
-     * @var \Symfony\Component\Console\Helper\ProgressBar
-     */
-    protected $progressBar = null;
 
     /**
      * Create a new command instance.
@@ -59,6 +55,7 @@ class DeactivateRoutedata extends Command
             $this->activator->getToDate()
         ));
         $this->setupProgressBar();
+        $this->progressBar->start();
         $this->activator
             ->onDay(function ($date) {
                 $this->progressBar->advance();
@@ -67,17 +64,5 @@ class DeactivateRoutedata extends Command
             ->deactivate();
         $this->progressBar->finish();
         return self::SUCCESS;
-    }
-
-    protected function setupProgressBar()
-    {
-        $fromDate = new Carbon($this->activator->getFromDate());
-        $toDate = new Carbon($this->activator->getToDate());
-        $days = $fromDate->diffInDays($toDate);
-        ProgressBar::setFormatDefinition('custom', " %current%/%max% [%bar%] %percent:3s%% %message%\n Remaining: %estimated:-6s% \n");
-        $this->progressBar = $this->output->createProgressBar($days);
-        $this->progressBar->setFormat('custom');
-        $this->progressBar->setMessage($this->activator->getFromDate());
-        $this->progressBar->start();
     }
 }

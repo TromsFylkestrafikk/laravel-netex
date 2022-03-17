@@ -4,9 +4,12 @@ namespace TromsFylkestrafikk\Netex\Console;
 
 use Illuminate\Console\Command;
 use TromsFylkestrafikk\Netex\Services\RouteActivator;
+use TromsFylkestrafikk\Netex\Console\Traits\ActivateProgress;
 
 class ActivateRoutedata extends Command
 {
+    use ActivateProgress;
+
     /**
      * The name and signature of the console command.
      *
@@ -23,9 +26,12 @@ class ActivateRoutedata extends Command
      */
     protected $description = 'Activate netex routedata for fast queries';
 
-    protected $journeyCount;
+    /**
+     * @var \TromsFylkestrafikk\Netex\Services\RouteActivator
+     */
+    protected $activator;
 
-    protected $dayCount;
+    protected $journeyCount;
 
     /**
      * Create a new command instance.
@@ -44,20 +50,23 @@ class ActivateRoutedata extends Command
      */
     public function handle()
     {
-        $activatior = new RouteActivator($this->argument('from-date'), $this->argument('to-date'));
+        $this->activator = new RouteActivator($this->argument('from-date'), $this->argument('to-date'));
         $this->info(sprintf(
             'Activating route data between %s and %s',
-            $activatior->getFromDate(),
-            $activatior->getToDate()
+            $this->activator->getFromDate(),
+            $this->activator->getToDate()
         ));
-        $activatior->deactivate()
+        $this->setupProgressBar();
+        $this->activator
+            ->deactivate()
+            ->onJourney(fn () => $this->journeyCount++)
             ->onDay(function ($date) {
-                $this->info(sprintf("%s: Activated %d journeys", $date, $this->journeyCount));
+                $this->progressBar->advance();
+                $this->progressBar->setMessage(sprintf("$date: %d journeys", $this->journeyCount));
                 $this->journeyCount = 0;
             })
-            ->onJourney(fn () => $this->journeyCount++)
             ->activate();
-        $stats = $activatior->summary();
+        $stats = $this->activator->summary();
         $this->info(sprintf(
             "Activation complete. %d days, %d journeys, %d calls",
             $stats['days'],
