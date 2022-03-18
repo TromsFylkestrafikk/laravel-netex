@@ -56,9 +56,19 @@ class ActivateRoutedata extends Command
             $this->activator->getFromDate(),
             $this->activator->getToDate()
         ));
+        $this->info("Step 1: De-activate");
         $this->setupProgressBar();
         $this->activator
-            ->deactivate()
+            ->onDay(function ($date) {
+                $this->progressBar->setMessage($date);
+                $this->progressBar->advance();
+            })
+            ->deactivate();
+        $this->progressBar->finish();
+
+        $this->info("Step 2: Activating");
+        $this->setupProgressBar();
+        $this->activator
             ->onJourney(fn () => $this->journeyCount++)
             ->onDay(function ($date) {
                 $this->progressBar->advance();
