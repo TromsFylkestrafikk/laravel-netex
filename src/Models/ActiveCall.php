@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $line_private_code Internal numeric line number
  * @property string $destination Interim/current destination. Often changed during a journey
  * @property int $order Order of call during journey
- * @property string $quay_ref Stop place quay ID
+ * @property string $stop_quay_id Stop place quay ID
  * @property string $stop_place_name Stop place name
  * @property bool $alighting Stop allows alighting
  * @property bool $boarding Stop allows boarding
@@ -38,8 +38,8 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveCall whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveCall whereLinePrivateCode($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveCall whereOrder($value)
- * @method static \Illuminate\Database\Eloquent\Builder|ActiveCall whereQuayRef($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveCall whereStopPlaceName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ActiveCall whereStopQuayId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveCall whereUpdatedAt($value)
  * @mixin \Eloquent
  */
@@ -70,7 +70,7 @@ class ActiveCall extends Model
         'line_private_code',
         'destination',
         'order',
-        'quay_ref',
+        'stop_quay_id',
         'stop_place_name',
         'alighting',
         'boarding',
@@ -94,6 +94,6 @@ class ActiveCall extends Model
 
     public function stopQuay()
     {
-        return $this->hasOne(StopQuay::class, 'quay_ref');
+        return $this->hasOne(StopQuay::class);
     }
 }

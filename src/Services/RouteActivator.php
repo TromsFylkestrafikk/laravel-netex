@@ -275,7 +275,7 @@ class RouteActivator
 
     protected function activateJourneyCalls(array &$jRec)
     {
-        $rawCalls = $this->getRawCalls($jRec['journey_ref']);
+        $rawCalls = $this->getRawCalls($jRec['vehicle_journey_id']);
         $prevDeparture = new Carbon("{$jRec['date']} 00:00:00");
         $prevArrival = new Carbon("{$jRec['date']} 00:00:00");
         foreach ($rawCalls as $rawCall) {
@@ -294,8 +294,8 @@ class RouteActivator
         }
         $first = $rawCalls->first();
         $last = $rawCalls->last();
-        $jRec['first_stop_quay_ref'] = $first->quay_ref;
-        $jRec['last_stop_quay_ref'] = $last->quay_ref;
+        $jRec['first_stop_quay_id'] = $first->stop_quay_id;
+        $jRec['last_stop_quay_id'] = $last->stop_quay_id;
         $jRec['start_at'] = $first->departure_time;
         $jRec['end_at'] = $last->arrival_time;
     }
@@ -352,12 +352,12 @@ class RouteActivator
     {
         return DB::table('netex_vehicle_journeys', 'journey')
             ->select([
-                'journey.id as journey_ref',
+                'journey.id as vehicle_journey_id',
                 'journey.name',
                 'journey.private_code',
                 'route.direction',
                 'journey.journey_pattern_ref',
-                'journey.operator_ref',
+                'journey.operator_ref as operator_id',
                 'line.public_code as line_public_code',
                 'line.private_code as line_private_code',
                 'line.name as line_name',
@@ -390,7 +390,7 @@ class RouteActivator
                 'patstop.alighting',
                 'patstop.boarding',
                 'patstop.order',
-                'stopass.quay_ref',
+                'stopass.quay_ref as stop_quay_id',
                 'quay.privateCode as quay_private_code',
                 'quay.publicCode as quay_public_code',
                 'stop.name as stop_place_name',

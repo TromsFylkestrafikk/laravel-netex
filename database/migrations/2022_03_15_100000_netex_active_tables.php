@@ -16,17 +16,17 @@ class NetexActiveTables extends Migration
         Schema::create('netex_active_journeys', function (Blueprint $table) {
             $table->char('id', 64)->primary()->comment('Unique ID for journey/day');
             $table->date('date')->index('netex_active_journeys__date')->comment('The date this journey belongs to. The actual journey is not necessary run on this day');
-            $table->char('journey_ref', 45)->comment('Journey identifier');
+            $table->char('vehicle_journey_id', 45)->comment('Journey ID');
             $table->char('name', 45)->comment('Journey name');
             $table->unsignedInteger('private_code')->comment('Local journey code. Usually four digit code.');
             $table->char('direction', 45)->comment("'inbound' or 'outbound'");
-            $table->unsignedInteger('operator_ref');
+            $table->unsignedInteger('operator_id');
             $table->unsignedInteger('line_private_code')->comment('Internal numeric line number');
             $table->char('line_public_code', 45)->comment('Line number as shown to the public');
             $table->char('transport_mode', 45)->comment("'bus', 'water', 'rail' or similar");
             $table->char('transport_submode', 45)->comment('Detailed type of transport mode');
-            $table->char('first_stop_quay_ref', 64)->nullable();
-            $table->char('last_stop_quay_ref', 64)->nullable();
+            $table->char('first_stop_quay_id', 64)->nullable();
+            $table->char('last_stop_quay_id', 64)->nullable();
             $table->timestamp('start_at')->nullable()->comment('Departure time from first stop');
             $table->timestamp('end_at')->nullable()->comment('Arrival time on last stop');
             $table->timestamps();
@@ -38,7 +38,7 @@ class NetexActiveTables extends Migration
             $table->unsignedInteger('line_private_code')->comment('Internal numeric line number');
             $table->char('destination')->default('')->comment('Interim/current destination. Often changed during a journey');
             $table->unsignedInteger('order')->comment('Order of call during journey');
-            $table->char('quay_ref', 64)->comment('Stop place quay ID');
+            $table->char('stop_quay_id', 64)->index('netex_active_calls__quay')->comment('Stop place quay ID');
             $table->char('stop_place_name')->comment('Stop place name');
             $table->boolean('alighting')->default(true)->comment('Stop allows alighting');
             $table->boolean('boarding')->default(true)->comment('Stop allows boarding');
