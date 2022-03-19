@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * TromsFylkestrafikk\Netex\Models\ActiveCall
  *
- * @property int $id Unique ID of call for stop/journey/day/order
+ * @property string $id Unique ID of call for journey/day/order
  * @property int $active_journey_id
  * @property int $line_private_code Internal numeric line number
  * @property string $destination Interim/current destination. Often changed during a journey
@@ -47,7 +47,24 @@ class ActiveCall extends Model
 {
     use HasFactory;
 
+    /**
+     * @inheritdoc
+     */
+    public $incrementing = false;
+
+    /**
+     * @inheritdoc
+     */
     protected $table = 'netex_active_calls';
+
+    /**
+     * @inheritdoc
+     */
+    protected $keyType = 'string';
+
+    /**
+     * @inheritdoc
+     */
     protected $fillable = [
         'active_journey_id',
         'line_private_code',
@@ -62,6 +79,9 @@ class ActiveCall extends Model
         'departure_time',
     ];
 
+    /**
+     * @inheritdoc
+     */
     protected $casts = [
         'alighting' => 'boolean',
         'boarding' => 'boolean'

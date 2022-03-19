@@ -14,7 +14,7 @@ class NetexActiveTables extends Migration
     public function up()
     {
         Schema::create('netex_active_journeys', function (Blueprint $table) {
-            $table->id()->comment('Unique ID for journey/day');
+            $table->char('id', 64)->primary()->comment('Unique ID for journey/day');
             $table->date('date')->index('netex_active_journeys__date')->comment('The date this journey belongs to. The actual journey is not necessary run on this day');
             $table->char('journey_ref', 45)->comment('Journey identifier');
             $table->char('name', 45)->comment('Journey name');
@@ -33,8 +33,8 @@ class NetexActiveTables extends Migration
         });
 
         Schema::create('netex_active_calls', function (Blueprint $table) {
-            $table->id()->comment('Unique ID of call for stop/journey/day/order');
-            $table->unsignedBigInteger('active_journey_id')->index('netex_active_calls__active_journey');
+            $table->char('id', 64)->primary()->comment('Unique ID of call for stop/journey/day/order');
+            $table->char('active_journey_id', 64)->index('netex_active_calls__active_journey');
             $table->unsignedInteger('line_private_code')->comment('Internal numeric line number');
             $table->char('destination')->default('')->comment('Interim/current destination. Often changed during a journey');
             $table->unsignedInteger('order')->comment('Order of call during journey');

@@ -16,7 +16,7 @@ trait ActivateProgress
     {
         $fromDate = new Carbon($this->activator->getFromDate());
         $toDate = new Carbon($this->activator->getToDate());
-        $days = $fromDate->diffInDays($toDate);
+        $days = $fromDate->diffInDays($toDate) + 1;
         ProgressBar::setFormatDefinition('custom', " %current%/%max% [%bar%] %percent:3s%% %message%\n Remaining: %estimated:-6s% \n");
         $this->progressBar = $this->output->createProgressBar($days);
         $this->progressBar->setFormat('custom');

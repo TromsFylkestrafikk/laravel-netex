@@ -31,6 +31,9 @@ class ActivateRoutedata extends Command
      */
     protected $activator;
 
+    /**
+     * @var int
+     */
     protected $journeyCount;
 
     /**
@@ -76,6 +79,7 @@ class ActivateRoutedata extends Command
                 $this->journeyCount = 0;
             })
             ->activate();
+        $this->progressBar->finish();
         $stats = $this->activator->summary();
         $this->info(sprintf(
             "Activation complete. %d days, %d journeys, %d calls",

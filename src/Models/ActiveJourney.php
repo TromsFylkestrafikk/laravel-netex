@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * TromsFylkestrafikk\Netex\Models\ActiveJourney
  *
- * @property int $id Unique ID for journey/day
+ * @property string $id Unique ID for journey/day
  * @property string $date The date this journey belongs to. The actual journey is not necessary run on this day
  * @property string $journey_ref Journey identifier
  * @property string $name Journey name
@@ -55,7 +55,24 @@ class ActiveJourney extends Model
 {
     use HasFactory;
 
+    /**
+     * @inheritdoc
+     */
+    public $incrementing = false;
+
+    /**
+     * @inheritdoc
+     */
     protected $table = 'netex_active_journeys';
+
+    /**
+     * @inheritdoc
+     */
+    protected $keyType = 'string';
+
+    /**
+     * @inheritdoc
+     */
     protected $fillable = [
         'date',
         'journey_ref',

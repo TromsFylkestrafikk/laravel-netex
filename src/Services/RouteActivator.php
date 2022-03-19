@@ -205,18 +205,42 @@ class RouteActivator
         ];
     }
 
+    public function makeCallId(array $callRecord, $journeyRecord)
+    {
+        return (is_array($journeyRecord)
+                ? $this->makeJourneyId($journeyRecord)
+                : $journeyRecord)
+            . ':'
+            . $callRecord['order'];
+    }
+
+    /**
+     * @param mixed[] $journeyRecord
+     *
+     * @return string
+     */
+    public function makeJourneyId(array $journeyRecord)
+    {
+        return implode(':', [
+            $journeyRecord['date'],
+            $journeyRecord['line_private_code'],
+            $journeyRecord['private_code'],
+        ]);
+    }
+
     protected function activateJourneys($date, Collection $rawJourneys)
     {
         foreach ($rawJourneys as $rawJourney) {
             $rawJourney->date = $date;
-            $journey = $this->activateJourney($rawJourney);
+            $journey = $this->activateJourney((array) $rawJourney);
             $this->invoke($this->journeyCallback, $journey);
         }
     }
 
-    protected function activateJourney($rawJourney)
+    protected function activateJourney(array $rawJourney)
     {
-        $journey = new ActiveJourney((array) $rawJourney);
+        $journey = new ActiveJourney($rawJourney);
+        $journey->id = $this->makeJourneyId($rawJourney);
         $journey->save();
         $this->activateJourneyCalls($journey);
         $this->journeyCount++;
@@ -240,7 +264,7 @@ class RouteActivator
                 $prevArrival = $arrival;
             }
             $rawCall->call_time = $rawCall->arrival_time ?: $rawCall->departure_time;
-            $this->activateCall($journey, $rawCall);
+            $this->activateCall($journey, (array) $rawCall);
         }
         $first = $rawCalls->first();
         $last = $rawCalls->last();
@@ -251,11 +275,12 @@ class RouteActivator
         $journey->save();
     }
 
-    protected function activateCall(ActiveJourney $journey, $rawCall)
+    protected function activateCall(ActiveJourney $journey, array $rawCall)
     {
         $this->addCallRecord(array_merge(
-            array_intersect_key((array) $rawCall, $this->callFillable),
+            array_intersect_key($rawCall, $this->callFillable),
             [
+                'id' => $this->makeCallId($rawCall, $journey->id),
                 'active_journey_id' => $journey->id,
                 'line_private_code' => $journey->line_private_code,
             ]
@@ -317,7 +342,8 @@ class RouteActivator
      */
     protected function getRawCalls($journeyRef)
     {
-        return DB::table('netex_passing_times', 'ptime')
+        $start = microtime(true);
+        $ret = DB::table('netex_passing_times', 'ptime')
             ->select([
                 'ptime.arrival_time',
                 'ptime.departure_time',
@@ -336,6 +362,7 @@ class RouteActivator
             ->where('ptime.vehicle_journey_ref', '=', $journeyRef)
             ->orderBy('patstop.order')
             ->get();
+        return $ret;
     }
 
     protected function sanitizeDate($dateStr = null)
