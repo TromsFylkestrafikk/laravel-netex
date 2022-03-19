@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * TromsFylkestrafikk\Netex\Models\ActiveCall
  *
- * @property string $id Unique ID of call for journey/day/order
- * @property int $active_journey_id
+ * @property string $id Unique ID of call for stop/journey/day/order
+ * @property string $active_journey_id
  * @property int $line_private_code Internal numeric line number
  * @property string $destination Interim/current destination. Often changed during a journey
  * @property int $order Order of call during journey
