@@ -13,6 +13,13 @@ use TromsFylkestrafikk\Netex\Models\ActiveCall;
 class RouteActivator
 {
     /**
+     * Number of records to cache before doing a DB::insert()
+     *
+     * @var int
+     */
+    public const RECORDS_BEFORE_WRITE = 2000;
+
+    /**
      * @var string
      */
     protected $fromDate;
@@ -21,6 +28,20 @@ class RouteActivator
      * @var string
      */
     protected $toDate;
+
+    /**
+     * Non-written journey records.
+     *
+     * @var array[]
+     */
+    protected $nwJourneyRecords;
+
+    /**
+     * Non-written journey records count.
+     *
+     * @var int
+     */
+    protected $nwJourneyCount;
 
     /**
      * Non-written call records.
@@ -56,6 +77,13 @@ class RouteActivator
      * @var int
      */
     protected $dayCount;
+
+    /**
+     * Flipped version of ActiveJourney::fillable.
+     *
+     * @var array
+     */
+    protected $journeyFillable;
 
     /**
      * Flipped version of ActiveCall::fillable.
@@ -122,9 +150,12 @@ class RouteActivator
         $this->dayCount = 0;
         $this->journeyCount = 0;
         $this->callCount = 0;
+        $this->nwJourneyRecords = [];
+        $this->nwJourneyCount = 0;
         $this->nwCallRecords = [];
         $this->nwCallCount = 0;
         $this->callFillable = array_flip((new ActiveCall())->getFillable());
+        $this->journeyFillable = array_flip((new ActiveJourney())->getFillable());
 
         while ($date <= $toDate) {
             $dateStr = $date->format('Y-m-d');
@@ -135,6 +166,7 @@ class RouteActivator
             $date->addDay();
         }
         // Write last prepared records;
+        $this->addJourneyRecord();
         $this->addCallRecord();
         return $this;
     }
@@ -231,61 +263,69 @@ class RouteActivator
     protected function activateJourneys($date, Collection $rawJourneys)
     {
         foreach ($rawJourneys as $rawJourney) {
-            $rawJourney->date = $date;
-            $journey = $this->activateJourney((array) $rawJourney);
-            $this->invoke($this->journeyCallback, $journey);
+            $jRec = array_intersect_key((array) $rawJourney, $this->journeyFillable);
+            $jRec['date'] = $date;
+            $jRec['id'] = $this->makeJourneyId($jRec);
+            $this->activateJourneyCalls($jRec);
+            $this->addJourneyRecord($jRec);
+            $this->journeyCount++;
+            $this->invoke($this->journeyCallback, $jRec);
         }
     }
 
-    protected function activateJourney(array $rawJourney)
+    protected function activateJourneyCalls(array &$jRec)
     {
-        $journey = new ActiveJourney($rawJourney);
-        $journey->id = $this->makeJourneyId($rawJourney);
-        $journey->save();
-        $this->activateJourneyCalls($journey);
-        $this->journeyCount++;
-        return $journey;
-    }
-
-    protected function activateJourneyCalls(ActiveJourney $journey)
-    {
-        $rawCalls = $this->getRawCalls($journey->journey_ref);
-        $prevDeparture = new Carbon("{$journey->date} 00:00:00");
-        $prevArrival = new Carbon("{$journey->date} 00:00:00");
+        $rawCalls = $this->getRawCalls($jRec['journey_ref']);
+        $prevDeparture = new Carbon("{$jRec['date']} 00:00:00");
+        $prevArrival = new Carbon("{$jRec['date']} 00:00:00");
         foreach ($rawCalls as $rawCall) {
             if ($rawCall->departure_time) {
-                $departure = new Carbon("{$journey->date} {$rawCall->departure_time}");
+                $departure = new Carbon("{$jRec['date']} {$rawCall->departure_time}");
                 $rawCall->departure_time = $this->makeIsoDate($prevDeparture, $departure);
                 $prevDeparture = $departure;
             }
             if ($rawCall->arrival_time) {
-                $arrival = new Carbon("{$journey->date} {$rawCall->arrival_time}");
+                $arrival = new Carbon("{$jRec['date']} {$rawCall->arrival_time}");
                 $rawCall->arrival_time = $this->makeIsoDate($prevArrival, $arrival);
                 $prevArrival = $arrival;
             }
             $rawCall->call_time = $rawCall->arrival_time ?: $rawCall->departure_time;
-            $this->activateCall($journey, (array) $rawCall);
+            $this->activateCall($jRec, (array) $rawCall);
         }
         $first = $rawCalls->first();
         $last = $rawCalls->last();
-        $journey->first_stop_quay_ref = $first->quay_ref;
-        $journey->last_stop_quay_ref = $last->quay_ref;
-        $journey->start_at = $first->departure_time;
-        $journey->end_at = $last->arrival_time;
-        $journey->save();
+        $jRec['first_stop_quay_ref'] = $first->quay_ref;
+        $jRec['last_stop_quay_ref'] = $last->quay_ref;
+        $jRec['start_at'] = $first->departure_time;
+        $jRec['end_at'] = $last->arrival_time;
     }
 
-    protected function activateCall(ActiveJourney $journey, array $rawCall)
+    protected function activateCall(array $jRec, array $rawCall)
     {
         $this->addCallRecord(array_merge(
             array_intersect_key($rawCall, $this->callFillable),
             [
-                'id' => $this->makeCallId($rawCall, $journey->id),
-                'active_journey_id' => $journey->id,
-                'line_private_code' => $journey->line_private_code,
+                'id' => $this->makeCallId($rawCall, $jRec['id']),
+                'active_journey_id' => $jRec['id'],
+                'line_private_code' => $jRec['line_private_code'],
             ]
         ));
         $this->callCount++;
+    }
+
+    protected function addJourneyRecord($record = null)
+    {
+        if ($record) {
+            $this->nwJourneyRecords[] = $record;
+            $this->nwJourneyCount++;
+        }
+
+        // Flush unwritten records to persistent storage.
+        if (!$record || $this->nwJourneyCount > self::RECORDS_BEFORE_WRITE) {
+            DB::table('netex_active_journeys')->insert($this->nwJourneyRecords);
+            $this->nwJourneyRecords = [];
+            $this->nwJourneyCount = 0;
+        }
     }
 
     protected function addCallRecord($record = null)
@@ -296,7 +336,7 @@ class RouteActivator
         }
 
         // Flush unwritten records to persistent storage.
-        if (!$record || $this->nwCallCount > 500) {
+        if (!$record || $this->nwCallCount > self::RECORDS_BEFORE_WRITE) {
             DB::table('netex_active_calls')->insert($this->nwCallRecords);
             $this->nwCallRecords = [];
             $this->nwCallCount = 0;
