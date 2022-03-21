@@ -109,4 +109,9 @@ class ActiveJourney extends Model
     {
         return $this->hasOne(StopQuay::class, 'last_stop_quay_id');
     }
+
+    public function activeCalls()
+    {
+        return $this->hasMany(ActiveCall::class);
+    }
 }

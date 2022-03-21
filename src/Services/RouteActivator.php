@@ -382,7 +382,6 @@ class RouteActivator
      */
     protected function getRawCalls($journeyRef)
     {
-        $start = microtime(true);
         $ret = DB::table('netex_passing_times', 'ptime')
             ->select([
                 'ptime.arrival_time',

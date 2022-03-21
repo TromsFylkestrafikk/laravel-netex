@@ -70,7 +70,7 @@
           <dia:boolean val="true"/>
         </dia:attribute>
         <dia:attribute name="snap-to-grid">
-          <dia:boolean val="false"/>
+          <dia:boolean val="true"/>
         </dia:attribute>
         <dia:attribute name="snap-to-object">
           <dia:boolean val="true"/>
@@ -2304,8 +2304,8 @@
       </dia:attribute>
       <dia:attribute name="orth_points">
         <dia:point val="37.31,19.8"/>
-        <dia:point val="40,19.8"/>
-        <dia:point val="40,16.2"/>
+        <dia:point val="39,19.8"/>
+        <dia:point val="39,16.2"/>
         <dia:point val="42,16.2"/>
       </dia:attribute>
       <dia:attribute name="orth_orient">
@@ -2502,8 +2502,8 @@
       </dia:attribute>
       <dia:attribute name="orth_points">
         <dia:point val="37.31,21.4"/>
-        <dia:point val="40,21.4"/>
-        <dia:point val="40,26.2"/>
+        <dia:point val="39,21.4"/>
+        <dia:point val="39,26.2"/>
         <dia:point val="56,26.2"/>
       </dia:attribute>
       <dia:attribute name="orth_orient">
@@ -4153,8 +4153,8 @@
       </dia:attribute>
       <dia:attribute name="orth_points">
         <dia:point val="15.155,24.2"/>
-        <dia:point val="39,24.2"/>
-        <dia:point val="39,17"/>
+        <dia:point val="40,24.2"/>
+        <dia:point val="40,17"/>
         <dia:point val="42,17"/>
       </dia:attribute>
       <dia:attribute name="orth_orient">
