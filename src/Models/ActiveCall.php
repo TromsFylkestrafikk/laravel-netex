@@ -94,6 +94,6 @@ class ActiveCall extends Model
 
     public function stopQuay()
     {
-        return $this->hasOne(StopQuay::class);
+        return $this->belongsTo(StopQuay::class);
     }
 }
