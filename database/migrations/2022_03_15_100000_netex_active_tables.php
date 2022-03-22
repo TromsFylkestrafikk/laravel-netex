@@ -49,8 +49,12 @@ class NetexActiveTables extends Migration
         });
 
         Schema::create('netex_destination_displays', function (Blueprint $table) {
-            $table->unsignedInteger('id')->primary()->comment();
+            $table->unsignedInteger('id')->primary();
             $table->string('front_text', 256);
+        });
+
+        Schema::table('netex_journey_pattern_stop_point', function (Blueprint $table) {
+            $table->unsignedInteger('destination_display_ref')->nullable()->comment("Reference to current destination on route.");
         });
 
         // Add indexes to existing tables to speed up raw queries.
@@ -71,6 +75,9 @@ class NetexActiveTables extends Migration
         Schema::dropIfExists('netex_destination_displays');
         Schema::table('netex_passing_times', function (Blueprint $table) {
             $table->dropIndex('netex_passing_times__journey_ref');
+        });
+        Schema::table('netex_journey_pattern_stop_point', function (Blueprint $table) {
+            $table->dropColumn('destination_display_ref');
         });
     }
 }

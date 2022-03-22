@@ -19,6 +19,7 @@ class NetexDatabase
         $this->truncateTable('netex_line_groups');
         $this->truncateTable('netex_stop_points');
         $this->truncateTable('netex_stop_assignments');
+        $this->truncateTable('netex_destination_displays');
         $this->truncateTable('netex_service_links');
         $this->truncateTable('netex_vehicle_schedules');
 
@@ -156,6 +157,29 @@ class NetexDatabase
         Log::info('New stop points added to database: ' . count($data));
     }
 
+    public function writeDestinationDisplays($displays)
+    {
+        Log::debug('Writing to database: Destination displays');
+        $records = [];
+        $count = 0;
+        foreach ($displays as $id => $display) {
+            $records[] = [
+                'id' => $id,
+                'front_text' => $display['FrontText']
+            ];
+            $count++;
+            if ($count > 1000) {
+                DB::table('netex_destination_displays')->insert($records);
+                $records = [];
+                $count = 0;
+            }
+        }
+        if ($count > 0) {
+            DB::table('netex_destination_displays')->insert($records);
+        }
+        Log::info('New destination displays added to database: ' . count($displays));
+    }
+
     /**
      * Write to database (serviceLinks).
      *
@@ -274,7 +298,8 @@ class NetexDatabase
                     'order' => $point['order'],
                     'stop_point_ref' => $point['ScheduledStopPointRef'],
                     'alighting' => $point['ForAlighting'],
-                    'boarding' => $point['ForBoarding']
+                    'boarding' => $point['ForBoarding'],
+                    'destination_display_ref' => $point['DestinationDisplayRef'],
                 ]);
             }
             foreach ($jp['linksInSequence'] as $link) {
@@ -307,11 +332,11 @@ class NetexDatabase
                 'line_ref' => $route['LineRef'],
                 'direction' => $route['DirectionType']
             ]);
-            foreach ($route['pointsInSequence'] as $pointID => $point) {
+            foreach ($route['pointsInSequence'] as $point) {
                 DB::table('netex_route_point_sequence')->insert([
                     'route_ref' => $id,
                     'order' => $point['order'],
-                    'stop_point_ref' => $point['RoutePointRef']
+                    'stop_point_ref' => $point['RoutePointRef'],
                 ]);
             }
         }

@@ -10,6 +10,29 @@ use DateInterval;
 
 class NetexFileParser
 {
+    public $description = '';
+    public $operators = [];
+    public $scheduledStopPoints = [];
+    public $operatingPeriods = [];
+    public $dayTypeAssignments = [];
+    public $dayTypes = [];
+    public $calendar = [];
+    public $groupOfLines = [];
+    public $serviceLinks = [];
+    public $routePoints = [];
+    public $destinationDisplays = [];
+    public $stopAssignments = [];
+    public $vehicleSchedules = [];
+
+    // XML data
+    public $lineDescription = '';
+    public $lines = [];
+    public $routes = [];
+    public $journeyPatterns = [];
+    public $vehicleJourneys = [];
+
+    protected $path;
+
     /**
      * Constructor.
      *
@@ -20,25 +43,6 @@ class NetexFileParser
     {
         // Main XML data
         $this->path = $path;
-        $this->description = '';
-        $this->operators = [];
-        $this->scheduledStopPoints = [];
-        $this->operatingPeriods = [];
-        $this->dayTypeAssignments = [];
-        $this->dayTypes = [];
-        $this->calendar = [];
-        $this->groupOfLines = [];
-        $this->serviceLinks = [];
-        $this->routePoints = [];
-        $this->stopAssignments = [];
-        $this->vehicleSchedules = [];
-
-        // Line XML data
-        $this->lineDescription = '';
-        $this->lines = [];
-        $this->routes = [];
-        $this->journeyPatterns = [];
-        $this->vehicleJourneys = [];
     }
 
     /**
@@ -81,6 +85,9 @@ class NetexFileParser
                         break;
 
                     case 'DestinationDisplay':
+                        $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
+                        $id = (int) $this->trimID($sxml['id']);
+                        $this->destinationDisplays[$id]['FrontText'] = (string) $sxml->FrontText;
                         break;
 
                     case 'ScheduledStopPoint':
@@ -391,11 +398,14 @@ class NetexFileParser
 
                         foreach ($sxml->pointsInSequence->StopPointInJourneyPattern as $point) {
                             $points[] = [
-                                'id' => $this->trimID($point->attributes()->id),
-                                'order' => (int) $point->attributes()->order,
-                                'ScheduledStopPointRef' => $this->trimID($point->ScheduledStopPointRef->attributes()->ref),
+                                'id' => $this->trimID($point['id']),
+                                'order' => (int) $point['order'],
+                                'ScheduledStopPointRef' => $this->trimID($point->ScheduledStopPointRef['ref']),
                                 'ForAlighting' => (int) ((string) $point->ForAlighting !== 'false'),
-                                'ForBoarding' => (int) ((string) $point->ForBoarding !== 'false')
+                                'ForBoarding' => (int) ((string) $point->ForBoarding !== 'false'),
+                                'DestinationDisplayRef' => $point->DestinationDisplayRef
+                                    ? ((int) $this->trimID($point->DestinationDisplayRef['ref']))
+                                    : null,
                             ];
                         }
 
