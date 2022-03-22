@@ -3,7 +3,7 @@
 namespace TromsFylkestrafikk\Netex\Console\NeTEx;
 
 use Illuminate\Support\Facades\Log;
-use DB;
+use Illuminate\Support\Facades\DB;
 use Exception;
 
 class NetexDatabase

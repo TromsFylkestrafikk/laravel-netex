@@ -48,6 +48,11 @@ class NetexActiveTables extends Migration
             $table->timestamps();
         });
 
+        Schema::create('netex_destination_displays', function (Blueprint $table) {
+            $table->unsignedInteger('id')->primary()->comment();
+            $table->string('front_text', 256);
+        });
+
         // Add indexes to existing tables to speed up raw queries.
         Schema::table('netex_passing_times', function (Blueprint $table) {
             $table->index('vehicle_journey_ref', 'netex_passing_times__journey_ref');
@@ -63,6 +68,7 @@ class NetexActiveTables extends Migration
     {
         Schema::dropIfExists('netex_active_journeys');
         Schema::dropIfExists('netex_active_calls');
+        Schema::dropIfExists('netex_destination_displays');
         Schema::table('netex_passing_times', function (Blueprint $table) {
             $table->dropIndex('netex_passing_times__journey_ref');
         });

@@ -2974,8 +2974,8 @@
       </dia:attribute>
       <dia:attribute name="orth_points">
         <dia:point val="65.385,27.8"/>
-        <dia:point val="67.1925,27.8"/>
-        <dia:point val="67.1925,25.4"/>
+        <dia:point val="67,27.8"/>
+        <dia:point val="67,25.4"/>
         <dia:point val="69,25.4"/>
       </dia:attribute>
       <dia:attribute name="orth_orient">
@@ -2984,7 +2984,7 @@
         <dia:enum val="0"/>
       </dia:attribute>
       <dia:attribute name="orth_autoroute">
-        <dia:boolean val="true"/>
+        <dia:boolean val="false"/>
       </dia:attribute>
       <dia:attribute name="text_colour">
         <dia:color val="#000000ff"/>
@@ -3608,8 +3608,8 @@
       </dia:attribute>
       <dia:attribute name="orth_points">
         <dia:point val="37.31,12.4"/>
-        <dia:point val="66.0452,12.4"/>
-        <dia:point val="66.0452,15.4"/>
+        <dia:point val="66,12.4"/>
+        <dia:point val="66,15.4"/>
         <dia:point val="69,15.4"/>
       </dia:attribute>
       <dia:attribute name="orth_orient">
