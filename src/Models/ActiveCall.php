@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $id Unique ID of call for stop/journey/day/order
  * @property string $active_journey_id
  * @property int $line_private_code Internal numeric line number
- * @property string $destination Interim/current destination. Often changed during a journey
+ * @property string $destination_display Interim/current destination. Often changed during a journey
  * @property int $order Order of call during journey
  * @property string $stop_quay_id Stop place quay ID
  * @property string $stop_place_name Stop place name
@@ -34,7 +34,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveCall whereCallTime($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveCall whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveCall whereDepartureTime($value)
- * @method static \Illuminate\Database\Eloquent\Builder|ActiveCall whereDestination($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ActiveCall whereDestinationDisplay($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveCall whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveCall whereLinePrivateCode($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveCall whereOrder($value)
