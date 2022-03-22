@@ -68,7 +68,7 @@ class ActiveCall extends Model
     protected $fillable = [
         'active_journey_id',
         'line_private_code',
-        'destination',
+        'destination_display',
         'order',
         'stop_quay_id',
         'stop_place_name',

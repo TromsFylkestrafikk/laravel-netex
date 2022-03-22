@@ -36,7 +36,7 @@ class NetexActiveTables extends Migration
             $table->char('id', 64)->primary()->comment('Unique ID of call for stop/journey/day/order');
             $table->char('active_journey_id', 64)->index('netex_active_calls__active_journey');
             $table->unsignedInteger('line_private_code')->comment('Internal numeric line number');
-            $table->char('destination')->default('')->comment('Interim/current destination. Often changed during a journey');
+            $table->string('destination_display', 256)->default('')->comment('Interim/current destination. Often changed during a journey');
             $table->unsignedInteger('order')->comment('Order of call during journey');
             $table->char('stop_quay_id', 64)->index('netex_active_calls__quay')->comment('Stop place quay ID');
             $table->char('stop_place_name')->comment('Stop place name');

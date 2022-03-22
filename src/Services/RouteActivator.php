@@ -278,6 +278,7 @@ class RouteActivator
         $rawCalls = $this->getRawCalls($jRec['vehicle_journey_id']);
         $prevDeparture = new Carbon("{$jRec['date']} 00:00:00");
         $prevArrival = new Carbon("{$jRec['date']} 00:00:00");
+        $prevDestDisplay = $jRec['name'];
         foreach ($rawCalls as $rawCall) {
             if ($rawCall->departure_time) {
                 $departure = new Carbon("{$jRec['date']} {$rawCall->departure_time}");
@@ -288,6 +289,11 @@ class RouteActivator
                 $arrival = new Carbon("{$jRec['date']} {$rawCall->arrival_time}");
                 $rawCall->arrival_time = $this->makeIsoDate($prevArrival, $arrival);
                 $prevArrival = $arrival;
+            }
+            if ($rawCall->destination_display) {
+                $prevDestDisplay = $rawCall->destination_display;
+            } else {
+                $rawCall->destination_display = $prevDestDisplay;
             }
             $rawCall->call_time = $rawCall->arrival_time ?: $rawCall->departure_time;
             $this->activateCall($jRec, (array) $rawCall);
@@ -389,12 +395,14 @@ class RouteActivator
                 'patstop.alighting',
                 'patstop.boarding',
                 'patstop.order',
+                'ddisp.front_text as destination_display',
                 'stopass.quay_ref as stop_quay_id',
                 'quay.privateCode as quay_private_code',
                 'quay.publicCode as quay_public_code',
                 'stop.name as stop_place_name',
             ])
             ->join('netex_journey_pattern_stop_point as patstop', 'ptime.journey_pattern_stop_point_ref', '=', 'patstop.id')
+            ->leftJoin('netex_destination_displays as ddisp', 'patstop.destination_display_ref', '=', 'ddisp.id')
             ->join('netex_stop_assignments as stopass', 'patstop.stop_point_ref', '=', 'stopass.id')
             ->join('netex_stop_quay as quay', 'stopass.quay_ref', '=', 'quay.id')
             ->join('netex_stop_place as stop', 'quay.stop_place_id', '=', 'stop.id')

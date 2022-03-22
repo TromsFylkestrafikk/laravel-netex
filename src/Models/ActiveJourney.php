@@ -25,6 +25,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $end_at Arrival time on last stop
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection|\TromsFylkestrafikk\Netex\Models\ActiveCall[] $activeCalls
+ * @property-read int|null $active_calls_count
  * @property-read \TromsFylkestrafikk\Netex\Models\StopQuay|null $firstStopQuay
  * @property-read \TromsFylkestrafikk\Netex\Models\StopQuay|null $lastStopQuay
  * @property-read \TromsFylkestrafikk\Netex\Models\Operator|null $operator
