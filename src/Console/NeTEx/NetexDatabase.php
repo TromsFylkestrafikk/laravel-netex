@@ -2,9 +2,10 @@
 
 namespace TromsFylkestrafikk\Netex\Console\NeTEx;
 
+use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use Exception;
+use TromsFylkestrafikk\Netex\Services\DbBulkInsert;
 
 class NetexDatabase
 {
@@ -61,14 +62,15 @@ class NetexDatabase
     public function writeCalendar($data)
     {
         Log::debug('Writing to database: Calendar');
-
+        $dumper = new DbBulkInsert('netex_calendar');
         foreach ($data as $id => $cal) {
-            DB::table('netex_calendar')->insert([
+            $dumper->addRecord([
                 'id' => $id,
                 'ref' => $cal['ref'],
                 'date' => $cal['date']
             ]);
         }
+        $dumper->flush();
 
         Log::info('New calendar entries added to database: ' . count($data));
     }
@@ -82,14 +84,16 @@ class NetexDatabase
     {
         Log::debug('Writing to database: Operators');
 
+        $dumper = new DbBulkInsert('netex_operators');
         foreach ($data as $id => $operator) {
-            DB::table('netex_operators')->insert([
+            $dumper->addRecord([
                 'id' => $id,
                 'name' => $operator['Name'],
                 'legal_name' => $operator['LegalName'],
                 'company_number' => $operator['CompanyNumber']
             ]);
         }
+        $dumper->flush();
 
         Log::info('New operators added to database: ' . count($data));
     }
@@ -102,13 +106,14 @@ class NetexDatabase
     public function writeGroupOfLines($data)
     {
         Log::debug('Writing to database: Line groups');
-
+        $dumper = new DbBulkInsert('netex_line_groups');
         foreach ($data as $id => $group) {
-            DB::table('netex_line_groups')->insert([
+            $dumper->addRecord([
                 'id' => $id,
                 'name' => $group['Name']
             ]);
         }
+        $dumper->flush();
 
         Log::info('New line groups added to database: ' . count($data));
     }
@@ -122,8 +127,9 @@ class NetexDatabase
     {
         Log::debug('Writing to database: Lines');
 
+        $writer = new DbBulkInsert('netex_lines');
         foreach ($data as $id => $line) {
-            DB::table('netex_lines')->insert([
+            $writer->addRecord([
                 'id' => $id,
                 'name' => $line['Name'],
                 'transport_mode' => $line['TransportMode'],
@@ -134,6 +140,7 @@ class NetexDatabase
                 'line_group_ref' => $line['RepresentedByGroupRef']
             ]);
         }
+        $writer->flush();
 
         Log::info('New lines added to database: ' . count($data));
     }
@@ -147,12 +154,14 @@ class NetexDatabase
     {
         Log::debug('Writing to database: Stop points');
 
+        $writer = new DbBulkInsert('netex_stop_points');
         foreach ($data as $id => $sp) {
-            DB::table('netex_stop_points')->insert([
+            $writer->addRecord([
                 'id' => $id,
                 'name' => $sp['Name']
             ]);
         }
+        $writer->flush();
 
         Log::info('New stop points added to database: ' . count($data));
     }
@@ -160,23 +169,14 @@ class NetexDatabase
     public function writeDestinationDisplays($displays)
     {
         Log::debug('Writing to database: Destination displays');
-        $records = [];
-        $count = 0;
+        $dumper = new DbBulkInsert('netex_destination_displays');
         foreach ($displays as $id => $display) {
-            $records[] = [
+            $dumper->addRecord([
                 'id' => $id,
                 'front_text' => $display['FrontText']
-            ];
-            $count++;
-            if ($count > 1000) {
-                DB::table('netex_destination_displays')->insert($records);
-                $records = [];
-                $count = 0;
-            }
+            ]);
         }
-        if ($count > 0) {
-            DB::table('netex_destination_displays')->insert($records);
-        }
+        $dumper->flush();
         Log::info('New destination displays added to database: ' . count($displays));
     }
 
@@ -188,9 +188,9 @@ class NetexDatabase
     public function writeServiceLinks($data)
     {
         Log::debug('Writing to database: Service links');
-
+        $dumper = new DbBulkInsert('netex_service_links');
         foreach ($data as $id => $sl) {
-            DB::table('netex_service_links')->insert([
+            $dumper->addRecord([
                 'id' => $id,
                 'distance' => $sl['Distance'],
                 'srs_dimension' => $sl['srsDimension'],
@@ -198,7 +198,7 @@ class NetexDatabase
                 'pos_list' => $sl['posList']
             ]);
         }
-
+        $dumper->flush();
         Log::info('New service links added to database: ' . count($data));
     }
 
@@ -210,15 +210,17 @@ class NetexDatabase
     public function writeStopAssignments($data)
     {
         Log::debug('Writing to database: Stop assignments');
+        $dumper = new DbBulkInsert('netex_stop_assignments');
 
         foreach ($data as $id => $sa) {
-            DB::table('netex_stop_assignments')->insert([
+            $dumper->addRecord([
                 'id' => $id,
                 'order' => $sa['order'],
                 'stop_point_ref' => $sa['ScheduledStopPointRef'],
                 'quay_ref' => $sa['QuayRef']
             ]);
         }
+        $dumper->flush();
 
         Log::info('New stop assignments added to database: ' . count($data));
     }
@@ -232,14 +234,16 @@ class NetexDatabase
     {
         Log::debug('Writing to database: Vehicle schedules');
 
-        foreach ($data as $id => $vs) {
+        $dumper = new DbBulkInsert('netex_vehicle_schedules');
+        foreach ($data as $vs) {
             foreach ($vs['journeys'] as $journeyID => $journey) {
-                DB::table('netex_vehicle_schedules')->insert([
+                $dumper->addRecord([
                     'calendar_ref' => $vs['DayTypeRef'],
                     'vehicle_journey_ref' => $journey['VehicleJourneyRef']
                 ]);
             }
         }
+        $dumper->flush();
 
         Log::info('New vehicle schedules added to database: ' . count($data));
     }
@@ -253,8 +257,11 @@ class NetexDatabase
     {
         Log::debug('Writing to database: Vehicle journeys');
 
+        $vjDumper = new DbBulkInsert('netex_vehicle_journeys');
+        $ptDumper = new DbBulkInsert('netex_passing_times');
+
         foreach ($data as $id => $vj) {
-            DB::table('netex_vehicle_journeys')->insert([
+            $vjDumper->addRecord([
                 'id' => $id,
                 'name' => $vj['Name'],
                 'private_code' => $vj['PrivateCode'],
@@ -264,7 +271,7 @@ class NetexDatabase
                 'calendar_ref' => $vj['DayTypeRef']
             ]);
             foreach ($vj['passingTimes'] as $ptID => $pt) {
-                DB::table('netex_passing_times')->insert([
+                $ptDumper->addRecord([
                     'vehicle_journey_ref' => $id,
                     'arrival_time' => $pt['ArrivalTime'],
                     'departure_time' => $pt['DepartureTime'],
@@ -272,6 +279,8 @@ class NetexDatabase
                 ]);
             }
         }
+        $vjDumper->flush();
+        $ptDumper->flush();
 
         Log::info('New vehicle journeys added to database: ' . count($data));
     }
@@ -284,15 +293,17 @@ class NetexDatabase
     public function writeJourneyPatterns($data)
     {
         Log::debug('Writing to database: Journey patterns');
-
+        $jpDumper = new DbBulkInsert('netex_journey_patterns');
+        $pspDumper = new DbBulkInsert('netex_journey_pattern_stop_point');
+        $jplDumper = new DbBulkInsert('netex_journey_pattern_link');
         foreach ($data as $id => $jp) {
-            DB::table('netex_journey_patterns')->insert([
+            $jpDumper->addRecord([
                 'id' => $id,
                 'name' => $jp['Name'],
                 'route_ref' => $jp['RouteRef']
             ]);
             foreach ($jp['pointsInSequence'] as $point) {
-                DB::table('netex_journey_pattern_stop_point')->insert([
+                $pspDumper->addRecord([
                     'id' => $point['id'],
                     'journey_pattern_ref' => $id,
                     'order' => $point['order'],
@@ -303,7 +314,7 @@ class NetexDatabase
                 ]);
             }
             foreach ($jp['linksInSequence'] as $link) {
-                DB::table('netex_journey_pattern_link')->insert([
+                $jplDumper->addRecord([
                     'id' => $link['id'],
                     'journey_pattern_ref' => $id,
                     'order' => $link['order'],
@@ -311,6 +322,9 @@ class NetexDatabase
                 ]);
             }
         }
+        $jpDumper->flush();
+        $pspDumper->flush();
+        $jplDumper->flush();
 
         Log::info('New journey patterns added to database: ' . count($data));
     }
@@ -323,9 +337,10 @@ class NetexDatabase
     public function writeRoutes($data)
     {
         Log::debug('Writing to database: Routes');
-
+        $routeDumper = new DbBulkInsert('netex_routes');
+        $seqDumper = new DbBulkInsert('netex_route_point_sequence');
         foreach ($data as $id => $route) {
-            DB::table('netex_routes')->insert([
+            $routeDumper->addRecord([
                 'id' => $id,
                 'name' => $route['Name'],
                 'short_name' => $route['ShortName'],
@@ -333,13 +348,15 @@ class NetexDatabase
                 'direction' => $route['DirectionType']
             ]);
             foreach ($route['pointsInSequence'] as $point) {
-                DB::table('netex_route_point_sequence')->insert([
+                $seqDumper->addRecord([
                     'route_ref' => $id,
                     'order' => $point['order'],
                     'stop_point_ref' => $point['RoutePointRef'],
                 ]);
             }
         }
+        $routeDumper->flush();
+        $seqDumper->flush();
 
         Log::info('New routes added to database: ' . count($data));
     }
