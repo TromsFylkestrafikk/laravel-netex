@@ -109,11 +109,7 @@ class RouteActivator
         $date = new Carbon($this->fromDate);
         $toDate = new Carbon($this->toDate);
 
-        Log::info(sprintf(
-            "NeTEx: Activating route data between %s and %s",
-            $this->fromDate,
-            $this->toDate
-        ));
+        Log::info(sprintf("NeTEx: Activating route data between %s and %s", $this->fromDate, $this->toDate));
         $this->journeyDumper = new DbBulkInsert('netex_active_journeys');
         $this->callDumper = new DbBulkInsert('netex_active_calls');
         $this->dayCount = 0;
@@ -127,6 +123,8 @@ class RouteActivator
             $rawJourneys = $this->getRawJourneys($dateStr);
             $this->activateJourneys($dateStr, $rawJourneys);
             $this->dayCount++;
+            // Interim flush to assert the full day is complete, and get the
+            // correct written count.
             $this->journeyDumper->flush();
             $this->callDumper->flush();
             $this->invoke($this->dayCallback, $dateStr);
@@ -164,11 +162,7 @@ class RouteActivator
 
         $this->dayCount = 0;
 
-        Log::info(sprintf(
-            "NeTEx: De-activating route data between %s and %s",
-            $this->fromDate,
-            $this->toDate
-        ));
+        Log::info(sprintf("NeTEx: De-activating route data between %s and %s", $this->fromDate, $this->toDate));
         while ($date <= $toDate) {
             DB::table('netex_active_calls', 'call')
                 ->join('netex_active_journeys as journey', 'call.active_journey_id', '=', 'journey.id')
