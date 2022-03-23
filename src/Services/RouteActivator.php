@@ -109,23 +109,46 @@ class RouteActivator
         $date = new Carbon($this->fromDate);
         $toDate = new Carbon($this->toDate);
 
+        Log::info(sprintf(
+            "NeTEx: Activating route data between %s and %s",
+            $this->fromDate,
+            $this->toDate
+        ));
         $this->journeyDumper = new DbBulkInsert('netex_active_journeys');
         $this->callDumper = new DbBulkInsert('netex_active_calls');
         $this->dayCount = 0;
         $this->callFillable = array_flip((new ActiveCall())->getFillable());
         $this->journeyFillable = array_flip((new ActiveJourney())->getFillable());
 
+        $prevJourneyCount = 0;
+        $prevCallCount = 0;
         while ($date <= $toDate) {
             $dateStr = $date->format('Y-m-d');
             $rawJourneys = $this->getRawJourneys($dateStr);
             $this->activateJourneys($dateStr, $rawJourneys);
             $this->dayCount++;
+            $this->journeyDumper->flush();
+            $this->callDumper->flush();
             $this->invoke($this->dayCallback, $dateStr);
+            Log::debug(sprintf(
+                "NeTEx: %s: %d journeys and %d calls",
+                $dateStr,
+                $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
+                $this->callDumper->getRecordsWritten() - $prevCallCount,
+            ));
+            $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
+            $prevCallCount = $this->callDumper->getRecordsWritten();
             $date->addDay();
         }
         // Write last prepared records;
         $this->journeyDumper->flush();
         $this->callDumper->flush();
+        Log::info(sprintf(
+            "NeTEx: Activation complete. %d days, %d journeys, %d calls",
+            $this->dayCount,
+            $this->journeyDumper->getRecordsWritten(),
+            $this->callDumper->getRecordsWritten()
+        ));
         return $this;
     }
 
@@ -141,6 +164,11 @@ class RouteActivator
 
         $this->dayCount = 0;
 
+        Log::info(sprintf(
+            "NeTEx: De-activating route data between %s and %s",
+            $this->fromDate,
+            $this->toDate
+        ));
         while ($date <= $toDate) {
             DB::table('netex_active_calls', 'call')
                 ->join('netex_active_journeys as journey', 'call.active_journey_id', '=', 'journey.id')
@@ -150,6 +178,7 @@ class RouteActivator
             $this->invoke($this->dayCallback, $date->format('Y-m-d'));
             $date->addDay();
         }
+        Log::info("NeTEx: De-activating complete");
         return $this;
     }
 
