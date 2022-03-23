@@ -97,6 +97,11 @@ class ActiveJourney extends Model
         return $this->hasOne(VehicleJourney::class);
     }
 
+    public function line()
+    {
+        return $this->hasOne(Line::class);
+    }
+
     public function operator()
     {
         return $this->hasOne(Operator::class);

@@ -17,7 +17,7 @@ class RouteActivator
      *
      * @var int
      */
-    public const RECORDS_BEFORE_WRITE = 2000;
+    public const BUFFERED_RECORDS = 2000;
 
     /**
      * @var string
@@ -327,7 +327,7 @@ class RouteActivator
         }
 
         // Flush unwritten records to persistent storage.
-        if (!$record || $this->nwJourneyCount > self::RECORDS_BEFORE_WRITE) {
+        if (!$record || $this->nwJourneyCount > self::BUFFERED_RECORDS) {
             DB::table('netex_active_journeys')->insert($this->nwJourneyRecords);
             $this->nwJourneyRecords = [];
             $this->nwJourneyCount = 0;
@@ -342,7 +342,7 @@ class RouteActivator
         }
 
         // Flush unwritten records to persistent storage.
-        if (!$record || $this->nwCallCount > self::RECORDS_BEFORE_WRITE) {
+        if (!$record || $this->nwCallCount > self::BUFFERED_RECORDS) {
             DB::table('netex_active_calls')->insert($this->nwCallRecords);
             $this->nwCallRecords = [];
             $this->nwCallCount = 0;
@@ -364,6 +364,7 @@ class RouteActivator
                 'route.direction',
                 'journey.journey_pattern_ref',
                 'journey.operator_ref as operator_id',
+                'line.id as line_id',
                 'line.public_code as line_public_code',
                 'line.private_code as line_private_code',
                 'line.name as line_name',

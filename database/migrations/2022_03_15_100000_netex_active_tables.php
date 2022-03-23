@@ -17,6 +17,7 @@ class NetexActiveTables extends Migration
             $table->char('id', 64)->primary()->comment('Unique ID for journey/day');
             $table->date('date')->index('netex_active_journeys__date')->comment('The date this journey belongs to. The actual journey is not necessary run on this day');
             $table->char('vehicle_journey_id', 45)->comment('Journey ID');
+            $table->char('line_id', 45)->comment('Reference to netex_lines table');
             $table->char('name', 45)->comment('Journey name');
             $table->unsignedInteger('private_code')->comment('Local journey code. Usually four digit code.');
             $table->char('direction', 45)->comment("'inbound' or 'outbound'");
