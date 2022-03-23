@@ -39,6 +39,13 @@ class DbBulkInsert
     protected $recordCount;
 
     /**
+     * Total number of records written to db.
+     *
+     * @var int
+     */
+    protected $recordsWritten;
+
+    /**
      * Number of buffered records before write.
      *
      * @var int
@@ -57,6 +64,7 @@ class DbBulkInsert
         }
         $this->table = $table;
         $this->method = $method;
+        $this->recordsWritten = 0;
         $this->resetBuffer();
     }
 
@@ -88,8 +96,14 @@ class DbBulkInsert
     public function flush()
     {
         DB::table($this->table)->{$this->method}($this->records);
+        $this->recordsWritten += $this->recordCount;
         $this->resetBuffer();
         return $this;
+    }
+
+    public function getRecordsWritten()
+    {
+        return $this->recordsWritten;
     }
 
     protected function resetBuffer()

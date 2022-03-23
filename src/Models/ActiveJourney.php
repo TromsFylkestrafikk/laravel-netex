@@ -78,6 +78,7 @@ class ActiveJourney extends Model
     protected $fillable = [
         'date',
         'vehicle_journey_id',
+        'line_id',
         'name',
         'private_code',
         'direction',
