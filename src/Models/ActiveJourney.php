@@ -6,11 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * TromsFylkestrafikk\Netex\Models\ActiveJourney
+ * \TromsFylkestrafikk\Netex\Models\ActiveJourney
  *
  * @property string $id Unique ID for journey/day
  * @property string $date The date this journey belongs to. The actual journey is not necessary run on this day
  * @property string $vehicle_journey_id Journey ID
+ * @property string $line_id Reference to netex_lines table
  * @property string $name Journey name
  * @property int $private_code Local journey code. Usually four digit code.
  * @property string $direction 'inbound' or 'outbound'
@@ -29,6 +30,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property-read int|null $active_calls_count
  * @property-read \TromsFylkestrafikk\Netex\Models\StopQuay|null $firstStopQuay
  * @property-read \TromsFylkestrafikk\Netex\Models\StopQuay|null $lastStopQuay
+ * @property-read \TromsFylkestrafikk\Netex\Models\Line|null $line
  * @property-read \TromsFylkestrafikk\Netex\Models\Operator|null $operator
  * @property-read \TromsFylkestrafikk\Netex\Models\VehicleJourney|null $vehicleJourney
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveJourney newModelQuery()
@@ -41,6 +43,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveJourney whereFirstStopQuayId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveJourney whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveJourney whereLastStopQuayId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|ActiveJourney whereLineId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveJourney whereLinePrivateCode($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveJourney whereLinePublicCode($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ActiveJourney whereName($value)
@@ -95,27 +98,27 @@ class ActiveJourney extends Model
 
     public function vehicleJourney()
     {
-        return $this->hasOne(VehicleJourney::class);
+        return $this->belongsTo(VehicleJourney::class);
     }
 
     public function line()
     {
-        return $this->hasOne(Line::class);
+        return $this->belongsTo(Line::class);
     }
 
     public function operator()
     {
-        return $this->hasOne(Operator::class);
+        return $this->belongsTo(Operator::class);
     }
 
     public function firstStopQuay()
     {
-        return $this->hasOne(StopQuay::class, 'first_stop_quay_id');
+        return $this->belongsTo(StopQuay::class, 'first_stop_quay_id');
     }
 
     public function lastStopQuay()
     {
-        return $this->hasOne(StopQuay::class, 'last_stop_quay_id');
+        return $this->belongsTo(StopQuay::class, 'last_stop_quay_id');
     }
 
     public function activeCalls()
