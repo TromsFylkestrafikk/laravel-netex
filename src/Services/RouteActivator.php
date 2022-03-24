@@ -254,20 +254,11 @@ class RouteActivator
     protected function activateJourneyCalls(array &$jRec)
     {
         $rawCalls = $this->getRawCalls($jRec['vehicle_journey_id']);
-        $prevDeparture = new Carbon("{$jRec['date']} 04:00:00");
-        $prevArrival = new Carbon("{$jRec['date']} 04:00:00");
+        $callStamp = new Carbon("{$jRec['date']} 04:00:00");
         $prevDestDisplay = $jRec['name'];
         foreach ($rawCalls as $rawCall) {
-            if ($rawCall->departure_time) {
-                $departure = new Carbon("{$jRec['date']} {$rawCall->departure_time}");
-                $rawCall->departure_time = $this->makeIsoDate($prevDeparture, $departure);
-                $prevDeparture = $departure;
-            }
-            if ($rawCall->arrival_time) {
-                $arrival = new Carbon("{$jRec['date']} {$rawCall->arrival_time}");
-                $rawCall->arrival_time = $this->makeIsoDate($prevArrival, $arrival);
-                $prevArrival = $arrival;
-            }
+            $callStamp = $this->expandCallTime($rawCall, 'arrival_time', $callStamp);
+            $callStamp = $this->expandCallTime($rawCall, 'departure_time', $callStamp);
             if ($rawCall->destination_display) {
                 $prevDestDisplay = $rawCall->destination_display;
             } else {
@@ -282,6 +273,20 @@ class RouteActivator
         $jRec['last_stop_quay_id'] = $last->stop_quay_id;
         $jRec['start_at'] = $first->departure_time;
         $jRec['end_at'] = $last->arrival_time;
+    }
+
+    protected function expandCallTime(&$rawCall, $property, $prevCallStamp)
+    {
+        if (!$rawCall->$property) {
+            return $prevCallStamp;
+        }
+        $dateStr = $prevCallStamp->format('Y-m-d');
+        $callStamp = new Carbon("$dateStr {$rawCall->$property}");
+        if ($callStamp < $prevCallStamp) {
+            $callStamp->addDay();
+        }
+        $rawCall->$property = $callStamp->format('Y-m-d H:i:s');
+        return $callStamp;
     }
 
     protected function activateCall(array $jRec, array $rawCall)
@@ -363,14 +368,6 @@ class RouteActivator
     protected function sanitizeDate($dateStr = null)
     {
         return $dateStr ? (new Carbon($dateStr))->format('Y-m-d') : null;
-    }
-
-    protected function makeIsoDate($prev, $current)
-    {
-        if ($current < $prev) {
-            $current->addDay();
-        }
-        return $current->format('Y-m-d H:i:s');
     }
 
     protected function invoke(Closure $callback = null)
