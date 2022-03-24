@@ -275,6 +275,18 @@ class RouteActivator
         $jRec['end_at'] = $last->arrival_time;
     }
 
+    /**
+     * Expand a time only ('HH:mm:ss') time format to full date timestamp.
+     *
+     * For calls that passes midnight, we need to keep track of the date and
+     * update it when needed. This updated Carbon timestamp is returned.
+     *
+     * @param \stdClass &$rawCall
+     * @param string $property
+     * @param \Illuminate\Support\Carbon $prevCallStamp
+     *
+     * @return \Illuminate\Support\Carbon
+     */
     protected function expandCallTime(&$rawCall, $property, $prevCallStamp)
     {
         if (!$rawCall->$property) {
@@ -289,6 +301,12 @@ class RouteActivator
         return $callStamp;
     }
 
+    /**
+     * Activate (persistent store) a single raw call.
+     *
+     * @param mixed[] $jRec
+     * @param mixed[] $rawCall
+     */
     protected function activateCall(array $jRec, array $rawCall)
     {
         $this->callDumper->addRecord(array_merge(
@@ -302,6 +320,8 @@ class RouteActivator
     }
 
     /**
+     * Query the raw netex data for a day's journey data
+     *
      * @param string $date
      *
      * @return \Illuminate\Support\Collection
@@ -365,11 +385,24 @@ class RouteActivator
         return $ret;
     }
 
+    /**
+     * Assert we have a uniform date string format.
+     *
+     * @param string|null $dateStr
+     * @return string|null
+     */
     protected function sanitizeDate($dateStr = null)
     {
         return $dateStr ? (new Carbon($dateStr))->format('Y-m-d') : null;
     }
 
+    /**
+     * Invoke a callback if it exists.
+     *
+     * The remaining arguments are passed on as arguments to the handler.
+     *
+     * @param \Closure $callback
+     */
     protected function invoke(Closure $callback = null)
     {
         if (is_callable($callback)) {
