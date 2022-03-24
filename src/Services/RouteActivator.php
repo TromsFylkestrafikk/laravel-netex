@@ -254,8 +254,8 @@ class RouteActivator
     protected function activateJourneyCalls(array &$jRec)
     {
         $rawCalls = $this->getRawCalls($jRec['vehicle_journey_id']);
-        $prevDeparture = new Carbon("{$jRec['date']} 00:00:00");
-        $prevArrival = new Carbon("{$jRec['date']} 00:00:00");
+        $prevDeparture = new Carbon("{$jRec['date']} 04:00:00");
+        $prevArrival = new Carbon("{$jRec['date']} 04:00:00");
         $prevDestDisplay = $jRec['name'];
         foreach ($rawCalls as $rawCall) {
             if ($rawCall->departure_time) {
