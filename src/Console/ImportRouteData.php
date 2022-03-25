@@ -3,9 +3,7 @@
 namespace TromsFylkestrafikk\Netex\Console;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Console\Helper\ProgressBar;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexFileParser;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexDatabase;
@@ -31,7 +29,7 @@ class ImportRouteData extends Command
     /**
      * Progress bar
      *
-     * @var Symfony\Component\Console\Helper\ProgressBar
+     * @var \Symfony\Component\Console\Helper\ProgressBar
      */
     protected $progressBar = null;
 
@@ -60,38 +58,54 @@ class ImportRouteData extends Command
         if (strpos($mainXmlFile, '.xml', -4) === false) {
             $this->error("Unrecognized file extension! Only XML is supported.");
             Log::error("Unrecognized file extension! Only XML is supported.");
-            exit(1);
+            return self::FAILURE;
         }
         if (!file_exists($mainXmlFile)) {
             $this->error("Main NeTEx XML file ($mainXmlFile) was not found!");
             Log::error("Main NeTEx XML file ($mainXmlFile) was not found!");
-            exit(1);
+            return self::FAILURE;
         }
-        $files = glob($netexDir . '*.xml', GLOB_NOSORT);
+        $files = array_filter(
+            glob($netexDir . '*.xml', GLOB_NOSORT),
+            fn ($path) => $path !== $mainXmlFile
+        );
         if (count($files) <= 1) {
             $this->error("No NeTEx line files (XML) found in $netexDir");
             Log::error("No NeTEx line files (XML) found in $netexDir");
-            exit(1);
+            return self::FAILURE;
         }
 
+        $this->setupProgressBar();
+        $database = new NetexDatabase();
+        $parser = new NetexFileParser($mainXmlFile);
+        $this->processMainFile($database, $parser);
+        $this->processLineFiles($database, $parser, $files);
+
+        Log::info("NeTEx route data import ended.");
+        return self::SUCCESS;
+    }
+
+    protected function setupProgressBar()
+    {
         // Progress bar setup. Initial settings used for "Parse main file".
         ProgressBar::setFormatDefinition('custom', ' %bar%  %elapsed% - %message%');
-        $this->progressBar = new ProgressBar($this->output, 8);
+        $this->progressBar = new ProgressBar($this->output);
         $this->progressBar->setFormat('custom');
         $this->progressBar->setBarCharacter('■');
         $this->progressBar->setEmptyBarCharacter('-');
         $this->progressBar->setProgressCharacter('▪');
-        $this->progressBar->setMessage('Processing NeTEx main data.');
+    }
 
-        // Parse main (common) NeTEx XML file.
+    protected function processMainFile(NetexDatabase $database, NetexFileParser $parser)
+    {
+        $this->progressBar->setMaxSteps(9);
         $this->progressBar->start();
-        $parser = new NetexFileParser($mainXmlFile);
-        $parser->parseMainXmlFile();
+        $this->progressBar->setMessage('Processing NeTEx main data.');
+        $parser->parseMainxmlFile();
+        $this->progressBar->advance();
         $parser->generateCalendar();
         $this->progressBar->advance();
 
-        // Update database with content from the main XML file.
-        $database = new NetexDatabase();
         $database->writeCalendar($parser->calendar);
         $this->progressBar->advance();
         $database->writeOperators($parser->operators);
@@ -100,13 +114,15 @@ class ImportRouteData extends Command
         $this->progressBar->advance();
         $database->writeScheduledStopPoints($parser->scheduledStopPoints);
         $this->progressBar->advance();
+        $database->writeDestinationDisplays($parser->destinationDisplays);
+        $this->progressBar->advance();
         $database->writeStopAssignments($parser->stopAssignments);
         $this->progressBar->advance();
         $database->writeServiceLinks($parser->serviceLinks);
         $this->progressBar->advance();
         $database->writeVehicleSchedules($parser->vehicleSchedules);
         $this->progressBar->finish();
-        $this->info(null);
+        $this->line("");
 
         // Free up menory.
         unset($parser->calendar);
@@ -118,16 +134,19 @@ class ImportRouteData extends Command
         unset($parser->routePoints);
         unset($parser->scheduledStopPoints);
         unset($parser->stopAssignments);
+        unset($parser->destinationDisplays);
         unset($parser->serviceLinks);
         unset($parser->vehicleSchedules);
+    }
 
+    protected function processLineFiles(NetexDatabase $database, NetexFileParser $parser, $files)
+    {
         // Parse all line files.
         $this->progressBar->setMaxSteps(count($files) + 1);
         $this->progressBar->setMessage('Processing NeTEx line data.');
         $this->progressBar->start();
 
-        foreach ($files as $key => $filePath) {
-            if ($filePath === $mainXmlFile) continue;
+        foreach ($files as $filePath) {
             $parser->parseLineXmlFile($filePath);
 
             // Update database with data from NeTEx line file.
@@ -139,8 +158,6 @@ class ImportRouteData extends Command
 
         $database->writeLines($parser->lines);
         $this->progressBar->finish();
-        $this->info(PHP_EOL . 'DONE!');
-        Log::info("NeTEx route data import ended.");
-        return 0;
+        $this->info("\nDONE!");
     }
 }
