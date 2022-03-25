@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Route data is now 'activated' in two tables w/models: ActiveJourneys
+  and ActiveCalls. This speeds up the complexity and query time for
+  typical route data lookups.
+
 ## [0.1.0] 2021-11-16
 
 ### Added
