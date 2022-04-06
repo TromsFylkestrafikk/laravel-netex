@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [0.1.1] – 2022-04-06
 
 ### Added
 - Route data is now 'activated' in two tables w/models: ActiveJourneys
