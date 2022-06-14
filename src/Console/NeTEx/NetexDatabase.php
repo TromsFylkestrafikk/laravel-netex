@@ -234,16 +234,23 @@ class NetexDatabase
     {
         Log::debug('Writing to database: Vehicle schedules');
 
-        $dumper = new DbBulkInsert('netex_vehicle_schedules');
+        $vsDump = new DbBulkInsert('netex_vehicle_schedules');
+        $blockDump = new DbBulkInsert('netex_vehicle_blocks');
         foreach ($data as $vs) {
-            foreach ($vs['journeys'] as $journeyID => $journey) {
-                $dumper->addRecord([
-                    'calendar_ref' => $vs['DayTypeRef'],
+            $blockDump->addRecord([
+                'id' => $vs['BlockRef'],
+                'private_code' => $vs['PrivateCode'],
+                'calendar_ref' => $vs['DayTypeRef'],
+            ]);
+            foreach ($vs['journeys'] as $journey) {
+                $vsDump->addRecord([
+                    'vehicle_block_ref' => $vs['BlockRef'],
                     'vehicle_journey_ref' => $journey['VehicleJourneyRef']
                 ]);
             }
         }
-        $dumper->flush();
+        $vsDump->flush();
+        $blockDump->flush();
 
         Log::info('New vehicle schedules added to database: ' . count($data));
     }

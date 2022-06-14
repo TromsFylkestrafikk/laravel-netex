@@ -131,6 +131,7 @@ class NetexFileParser
                     case 'Block':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
                         $id = $this->trimID($sxml->attributes()->id);
+                        $this->vehicleSchedules[$id]['BlockRef'] = $id;
                         $this->vehicleSchedules[$id]['PrivateCode'] = (int) $sxml->PrivateCode;
                         $this->vehicleSchedules[$id]['DayTypeRef'] = $this->trimID($sxml->dayTypes->DayTypeRef->attributes()->ref);
                         $journeys = [];
