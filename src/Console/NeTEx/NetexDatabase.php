@@ -23,6 +23,7 @@ class NetexDatabase
         $this->truncateTable('netex_destination_displays');
         $this->truncateTable('netex_service_links');
         $this->truncateTable('netex_vehicle_schedules');
+        $this->truncateTable('netex_vehicle_blocks');
 
         // Truncate all tables from line NeTEx files.
         $this->truncateTable('netex_vehicle_journeys');
