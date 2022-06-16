@@ -44,8 +44,6 @@ class ActivationStatus extends Command
     public function __construct()
     {
         parent::__construct();
-        $this->passiveSet = new RouteActivator();
-        $this->activeSet = new RouteActivator(null, null, 'active');
     }
 
     /**
@@ -55,6 +53,8 @@ class ActivationStatus extends Command
      */
     public function handle()
     {
+        $this->passiveSet = new RouteActivator();
+        $this->activeSet = new RouteActivator(null, null, 'active');
         $this->info((new RoutePeriodBar($this->passiveSet, $this->activeSet))->bars());
         $this->info(sprintf(
             "Current netex route set period: %s – %s",

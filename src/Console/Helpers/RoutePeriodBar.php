@@ -63,18 +63,18 @@ class RoutePeriodBar
         $this->maxDate = $passiveTo > $activeTo ? $passiveTo : $activeTo;
         $this->days = (int) $this->minDate->diffInDays($this->maxDate);
         $this->passiveDayStart = $this->minDate->diffInDays($passiveFrom);
-        $this->passiveDayEnd = $this->maxDate->diffInDays($passiveTo);
+        $this->passiveDayEnd = $this->minDate->diffInDays($passiveTo);
         $this->activeDayStart = $this->minDate->diffInDays($activeFrom);
-        $this->activeDayEnd = $this->maxDate->diffInDays($activeTo);
+        $this->activeDayEnd = $this->minDate->diffInDays($activeTo);
         $this->passiveBar = '';
         $this->activeBar = '';
     }
 
     public function bars()
     {
-        $this->passiveBar = $this->drawBar($this->passiveDayStart, $this->passiveDayEnd);
-        $this->activeBar =  $this->drawBar($this->activeDayStart, $this->activeDayEnd);
-        return sprintf("|%s|\n|%s|", $this->passiveBar, $this->activeBar);
+        $bars  = sprintf("NeTEx period:  |%s|\n", $this->drawBar($this->passiveDayStart, $this->passiveDayEnd));
+        $bars .= sprintf("Active period: |%s|\n", $this->drawBar($this->activeDayStart, $this->activeDayEnd));
+        return $bars;
     }
 
     protected function drawBar($startDay, $endDay)
