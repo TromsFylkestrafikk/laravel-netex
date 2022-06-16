@@ -68,14 +68,15 @@ class RouteActivator
      *
      * @param string|null $fromDate
      * @param string|null $toDate
+     * @param string|null $set Either 'active' or 'raw'. Active uses dates found in active tables.
      *
      * @return void
      */
-    public function __construct($fromDate = null, $toDate = null)
+    public function __construct($fromDate = null, $toDate = null, $set = null)
     {
         $fromDate = $this->sanitizeDate($fromDate);
         $toDate = $this->sanitizeDate($toDate);
-        $dates = DB::table('netex_calendar')
+        $dates = DB::table($set === 'active' ? 'netex_active_journeys' : 'netex_calendar')
             ->selectRaw('min(date) as fromDate')
             ->selectRaw('max(date) as toDate')
             ->first();

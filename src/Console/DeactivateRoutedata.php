@@ -48,7 +48,7 @@ class DeactivateRoutedata extends Command
      */
     public function handle()
     {
-        $this->activator = new RouteActivator($this->argument('from-date'), $this->argument('to-date'));
+        $this->activator = new RouteActivator($this->argument('from-date'), $this->argument('to-date'), 'active');
         $this->info(sprintf(
             "De-activating routedata between %s and %s",
             $this->activator->getFromDate(),

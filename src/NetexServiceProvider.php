@@ -3,7 +3,7 @@
 namespace TromsFylkestrafikk\Netex;
 
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Log;
+use TromsFylkestrafikk\Netex\Console\ActivationStatus;
 use TromsFylkestrafikk\Netex\Console\ActivateRoutedata;
 use TromsFylkestrafikk\Netex\Console\DeactivateRoutedata;
 use TromsFylkestrafikk\Netex\Console\ImportStops;
@@ -32,6 +32,7 @@ class NetexServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->commands([
+                ActivationStatus::class,
                 ActivateRoutedata::class,
                 DeactivateRoutedata::class,
                 ImportStops::class,
