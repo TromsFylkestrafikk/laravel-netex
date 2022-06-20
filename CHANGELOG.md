@@ -6,6 +6,7 @@
 - Vehicle blocks extracted to separate table. Vehicle schedules are
   now a pivot table between `netex_vehicle_blocks` and
   `netex_vehicle_schedules`.
+- New `netex:status` artisan command.
 
 ## [0.1.1] – 2022-04-06
 
