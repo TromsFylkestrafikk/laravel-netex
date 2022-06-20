@@ -4,8 +4,8 @@ namespace TromsFylkestrafikk\Netex\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
-use Symfony\Component\Console\Helper\ProgressBar;
 use TromsFylkestrafikk\Netex\Console\Helpers\RoutePeriodBar;
+use TromsFylkestrafikk\Netex\Models\ActiveCall;
 use TromsFylkestrafikk\Netex\Models\ActiveJourney;
 use TromsFylkestrafikk\Netex\Services\RouteActivator;
 
@@ -55,12 +55,37 @@ class ActivationStatus extends Command
     {
         $this->passiveSet = new RouteActivator();
         $this->activeSet = new RouteActivator(null, null, 'active');
+        if ($this->argument('date')) {
+            return $this->dayStatus($this->argument('date'));
+        } else {
+            return $this->overallStatus();
+        }
+    }
+
+    protected function overallStatus()
+    {
         $this->line((new RoutePeriodBar($this->passiveSet, $this->activeSet))->bars());
         $missing = $this->missingDates();
         $this->line(sprintf("Days in active set without active journeys: %d", count($missing)));
         if ($missing) {
             $this->info(sprintf("Missing days: \n\t- %s", implode("\n\t- ", $missing)), 'v');
         }
+        return self::SUCCESS;
+    }
+
+    protected function dayStatus($dateStr)
+    {
+        $date = new Carbon($dateStr);
+        $journeyCount = ActiveJourney::whereDate('date', $date)->count();
+        $callCount = ActiveJourney::whereDate('date', $date)
+            ->withCount('activeCalls')
+            ->get()
+            ->sum('active_calls_count');
+        $firstJourney = ActiveJourney::whereDate('date', $date)->first();
+        $activationDate = $firstJourney
+            ? (new Carbon($firstJourney->created_at))->format('Y-m-d')
+            : '-';
+        $this->table(['Journeys', 'Calls', 'Activated'], [[$journeyCount, $callCount, $activationDate]]);
     }
 
     protected function missingDates()

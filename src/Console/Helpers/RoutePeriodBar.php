@@ -28,7 +28,7 @@ class RoutePeriodBar
     /**
      * @var int
      */
-    protected $barWidth = 80;
+    protected $barWidth = 50;
 
     /**
      * @var \Illuminate\Support\Carbon
