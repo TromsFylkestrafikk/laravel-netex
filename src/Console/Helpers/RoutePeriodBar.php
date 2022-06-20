@@ -28,20 +28,61 @@ class RoutePeriodBar
     /**
      * @var int
      */
-    protected $barWith = 80;
+    protected $barWidth = 80;
 
     /**
      * @var \Illuminate\Support\Carbon
      */
     protected $maxDate;
 
+    /**
+     * @var \Illuminate\Support\Carbon
+     */
+    protected $passiveFrom;
+
+    /**
+     * @var \Illuminate\Support\Carbon
+     */
+    protected $passiveTo;
+
+    /**
+     * @var \Illuminate\Support\Carbon
+     */
+    protected $activeFrom;
+
+    /**
+     * @var \Illuminate\Support\Carbon
+     */
+    protected $activeTo;
+
+    /**
+     * @var int
+     */
     protected $passiveDayStart;
+
+    /**
+     * @var int
+     */
     protected $passiveDayEnd;
+
+    /**
+     * @var int
+     */
     protected $activeDayStart;
+
+    /**
+     * @var int
+     */
     protected $activeDayEnd;
 
+    /**
+     * @var string
+     */
     protected $passiveBar;
 
+    /**
+     * @var string
+     */
     protected $activeBar;
 
     /**
@@ -49,31 +90,44 @@ class RoutePeriodBar
      */
     protected $days;
 
+    protected $strPos = 0;
+
     public function __construct(RouteActivator $passive, RouteActivator $active)
     {
         $this->passive = $passive;
         $this->active = $active;
 
-        $passiveFrom = new Carbon($passive->getFromDate());
-        $passiveTo = new Carbon($passive->getToDate());
-        $activeFrom = new Carbon($active->getFromDate());
-        $activeTo = new Carbon($active->getToDate());
+        $this->passiveFrom = new Carbon($passive->getFromDate());
+        $this->passiveTo = new Carbon($passive->getToDate());
+        $this->activeFrom = new Carbon($active->getFromDate());
+        $this->activeTo = new Carbon($active->getToDate());
 
-        $this->minDate = $passiveFrom < $activeFrom ? $passiveFrom : $activeFrom;
-        $this->maxDate = $passiveTo > $activeTo ? $passiveTo : $activeTo;
+        $this->minDate = $this->passiveFrom < $this->activeFrom ? $this->passiveFrom : $this->activeFrom;
+        $this->maxDate = $this->passiveTo > $this->activeTo ? $this->passiveTo : $this->activeTo;
         $this->days = (int) $this->minDate->diffInDays($this->maxDate);
-        $this->passiveDayStart = $this->minDate->diffInDays($passiveFrom);
-        $this->passiveDayEnd = $this->minDate->diffInDays($passiveTo);
-        $this->activeDayStart = $this->minDate->diffInDays($activeFrom);
-        $this->activeDayEnd = $this->minDate->diffInDays($activeTo);
+        $this->passiveDayStart = $this->minDate->diffInDays($this->passiveFrom);
+        $this->passiveDayEnd = $this->minDate->diffInDays($this->passiveTo);
+        $this->activeDayStart = $this->minDate->diffInDays($this->activeFrom);
+        $this->activeDayEnd = $this->minDate->diffInDays($this->activeTo);
         $this->passiveBar = '';
         $this->activeBar = '';
     }
 
     public function bars()
     {
-        $bars  = sprintf("NeTEx period:  |%s|\n", $this->drawBar($this->passiveDayStart, $this->passiveDayEnd));
+        $passiveLabelBar = str_pad('', $this->barWidth, ' ');
+        $this->putStrCenteredAround($passiveLabelBar, $this->passiveFrom->format('Y-m-d'), $this->passiveDayStart);
+        $this->putStrCenteredAround($passiveLabelBar, $this->passiveTo->format('Y-m-d'), $this->passiveDayEnd);
+        $this->strPos = 0;
+        $activeLabelBar = str_pad('', $this->barWidth, ' ');
+        $this->putStrCenteredAround($activeLabelBar, $this->activeFrom->format('Y-m-d'), $this->activeDayStart);
+        $this->putStrCenteredAround($activeLabelBar, $this->activeTo->format('Y-m-d'), $this->activeDayEnd);
+        $this->strPos = 0;
+        $bars  = sprintf("               %s\n", $passiveLabelBar);
+        $bars .= sprintf("NeTEx period:  |%s|\n", $this->drawBar($this->passiveDayStart, $this->passiveDayEnd));
         $bars .= sprintf("Active period: |%s|\n", $this->drawBar($this->activeDayStart, $this->activeDayEnd));
+        $bars .= sprintf("               %s\n", $activeLabelBar);
+        $this->strPos = 0;
         return $bars;
     }
 
@@ -85,9 +139,29 @@ class RoutePeriodBar
         return $bar;
     }
 
-    public function drawDays($days, $char = '-')
+    protected function drawDays($days, $char = '-')
     {
-        $chars = round($this->barWith * $days / $this->days);
-        return str_pad('', (int) $chars, $char);
+        return str_pad('', $this->daysToLength($days), $char);
+    }
+
+    protected function putStrCenteredAround(&$bar, $string, $dayPos)
+    {
+        $startPos = $this->daysToLength($dayPos);
+        $strScew = (int) (strlen($string) / 2);
+        $startPos = max(0, $startPos - $strScew, $this->strPos);
+
+        $this->drawInStr($bar, $string, $startPos);
+        $this->strPos = $startPos + strlen($string) + 1;
+    }
+    protected function drawInStr(&$str, $insert, $fromPos = 0)
+    {
+        foreach (str_split($insert) as $pos => $ch) {
+            $str[$fromPos + $pos] = $ch;
+        }
+    }
+
+    protected function daysToLength($day): int
+    {
+        return (int) round($this->barWidth * $day / $this->days);
     }
 }
