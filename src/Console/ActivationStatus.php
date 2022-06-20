@@ -55,19 +55,9 @@ class ActivationStatus extends Command
     {
         $this->passiveSet = new RouteActivator();
         $this->activeSet = new RouteActivator(null, null, 'active');
-        $this->info((new RoutePeriodBar($this->passiveSet, $this->activeSet))->bars());
-        $this->info(sprintf(
-            "Current netex route set period: %s – %s",
-            $this->passiveSet->getFromDate(),
-            $this->passiveSet->getToDate()
-        ));
-        $this->info(sprintf(
-            "Current activated netex period: %s – %s",
-            $this->activeSet->getFromDate(),
-            $this->activeSet->getToDate()
-        ));
+        $this->line((new RoutePeriodBar($this->passiveSet, $this->activeSet))->bars());
         $missing = $this->missingDates();
-        $this->info(sprintf("Days in active set without active journeys: %d", count($missing)));
+        $this->line(sprintf("Days in active set without active journeys: %d", count($missing)));
         if ($missing) {
             $this->info(sprintf("Missing days: \n\t- %s", implode("\n\t- ", $missing)), 'v');
         }

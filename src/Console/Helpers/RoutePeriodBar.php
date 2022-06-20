@@ -115,20 +115,21 @@ class RoutePeriodBar
 
     public function bars()
     {
-        $passiveLabelBar = str_pad('', $this->barWidth, ' ');
-        $this->putStrCenteredAround($passiveLabelBar, $this->passiveFrom->format('Y-m-d'), $this->passiveDayStart);
-        $this->putStrCenteredAround($passiveLabelBar, $this->passiveTo->format('Y-m-d'), $this->passiveDayEnd);
-        $this->strPos = 0;
-        $activeLabelBar = str_pad('', $this->barWidth, ' ');
-        $this->putStrCenteredAround($activeLabelBar, $this->activeFrom->format('Y-m-d'), $this->activeDayStart);
-        $this->putStrCenteredAround($activeLabelBar, $this->activeTo->format('Y-m-d'), $this->activeDayEnd);
-        $this->strPos = 0;
-        $bars  = sprintf("               %s\n", $passiveLabelBar);
+        $bars  = sprintf("                %s\n", $this->labelBar($this->passiveFrom, $this->passiveTo));
         $bars .= sprintf("NeTEx period:  |%s|\n", $this->drawBar($this->passiveDayStart, $this->passiveDayEnd));
         $bars .= sprintf("Active period: |%s|\n", $this->drawBar($this->activeDayStart, $this->activeDayEnd));
-        $bars .= sprintf("               %s\n", $activeLabelBar);
+        $bars .= sprintf("                %s\n", $this->labelBar($this->activeFrom, $this->activeTo));
         $this->strPos = 0;
         return $bars;
+    }
+
+    protected function labelBar($fromDate, $toDate)
+    {
+        $this->strPos = 0;
+        $bar = str_pad('', $this->barWidth, ' ');
+        $this->putStrCenteredAround($bar, $fromDate->format('Y-m-d'), $this->minDate->diffInDays($fromDate));
+        $this->putStrCenteredAround($bar, $toDate->format('Y-m-d'), $this->minDate->diffInDays($toDate));
+        return $bar;
     }
 
     protected function drawBar($startDay, $endDay)
