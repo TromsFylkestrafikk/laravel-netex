@@ -3,6 +3,7 @@
 namespace TromsFylkestrafikk\Netex\Services;
 
 use Closure;
+use Illuminate\Support\Facades\Log;
 use TromsFylkestrafikk\Netex\Models\StopAssignment;
 use TromsFylkestrafikk\Netex\Models\StopPlace;
 
@@ -32,26 +33,33 @@ class StopsActivator
      */
     public function update()
     {
+        Log::info("Updating active stops found in current route data set");
         $this->count = StopPlace::whereActive(true)->count();
         $this->callProgress($this->deactProgressCb);
+        Log::debug("Deactivating {$this->count} active stops ...");
         StopPlace::whereActive(true)->chunkById(self::CHUNK_SIZE, function ($stops) {
             $this->progress += $stops->count();
             StopPlace::whereKey($stops->pluck('id')->toArray())->update(['active' => false]);
             $this->callProgress($this->deactProgressCb);
         });
 
+        $stopsUpdated = 0;
         $this->progress = 0;
         $this->count = StopAssignment::count();
+        Log::debug("De-activation complete. Activating using {$this->count} StopAssignments.");
         // Get 'seen' stops with regtopp ID.
         $this->callProgress($this->actProgressCb);
         StopAssignment::select(['id', 'quay_ref'])
             ->with('quay:stop_place_id,id')
-            ->chunkById(self::CHUNK_SIZE, function ($assignments) {
+            ->chunkById(self::CHUNK_SIZE, function ($assignments) use (&$stopsUpdated) {
                 $this->progress += $assignments->count();
-                StopPlace::whereKey($assignments->keyBy('quay.stop_place_id')->keys())
+                $stopIds = $assignments->keyBy('quay.stop_place_id')->keys();
+                $stopsUpdated += count($stopIds);
+                StopPlace::whereKey($stopIds)
                     ->update(['active' => true]);
                 $this->callProgress($this->actProgressCb);
             });
+        Log::info("Activation complete. Found ${stopsUpdated} active stop places");
         return $this;
     }
 
