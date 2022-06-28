@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use TromsFylkestrafikk\Netex\Scopes\ValidDateScope;
 
 /**
- * TromsFylkestrafikk\Netex\Models\StopPlace
+ * \TromsFylkestrafikk\Netex\Models\StopPlace
  *
  * @property string $id
  * @property string $version
@@ -20,6 +20,7 @@ use TromsFylkestrafikk\Netex\Scopes\ValidDateScope;
  * @property string|null $validToDate
  * @property string|null $topographicPlaceRef
  * @property string|null $parentSiteRef
+ * @property int $active
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \Illuminate\Database\Eloquent\Collection|\TromsFylkestrafikk\Netex\Models\StopPlaceAltId[] $altIds
@@ -32,6 +33,7 @@ use TromsFylkestrafikk\Netex\Scopes\ValidDateScope;
  * @method static \Illuminate\Database\Eloquent\Builder|StopPlace newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|StopPlace newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|StopPlace query()
+ * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereActive($value)
  * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereChanged($value)
  * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereCreated($value)
  * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereCreatedAt($value)
@@ -50,9 +52,9 @@ use TromsFylkestrafikk\Netex\Scopes\ValidDateScope;
  */
 class StopPlace extends Model
 {
+    public $incrementing = false;
     protected $table = 'netex_stop_place';
     protected $keyType = 'string';
-    public $incrementing = false;
 
     protected static function boot()
     {
