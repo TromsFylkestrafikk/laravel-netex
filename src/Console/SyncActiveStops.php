@@ -3,8 +3,8 @@
 namespace TromsFylkestrafikk\Netex\Console;
 
 use Illuminate\Console\Command;
-use TromsFylkestrafikk\Netex\Models\StopAssignment;
-use TromsFylkestrafikk\Netex\Models\StopPlace;
+use Symfony\Component\Console\Helper\ProgressBar;
+use TromsFylkestrafikk\Netex\Services\StopsActivator;
 
 class SyncActiveStops extends Command
 {
@@ -25,6 +25,11 @@ class SyncActiveStops extends Command
     protected $description = "Update 'active' state on stops based on existence in route set";
 
     /**
+     * @var \TromsFylkestrafikk\Netex\Services\StopsActivator
+     */
+    protected $activator;
+
+    /**
      * Create a new command instance.
      *
      * @return void
@@ -39,35 +44,39 @@ class SyncActiveStops extends Command
      *
      * @return mixed
      */
-    public function handle()
+    public function handle(StopsActivator $activator)
     {
+        $this->activator = $activator;
+
         // First, clear active stops.
-        $this->info("De-activating existing stops.");
-
-        $activeCount = StopPlace::whereActive(true)->count();
-
-        $bar = $this->output->createProgressBar($activeCount);
-        $bar->start();
-        StopPlace::whereActive(true)->chunkById(self::CHUNK_SIZE, function ($stops) use ($bar) {
-            StopPlace::whereKey($stops->pluck('id')->toArray())->update(['active' => false]);
-            $bar->advance(self::CHUNK_SIZE);
-        });
-        $bar->finish();
-        $this->newLine();
-
-        // Get 'seen' stops with regtopp ID.
-        $this->info("Syncing found stops in route data with existing stops");
-        $bar = $this->output->createProgressBar(StopAssignment::count());
-        $bar->start();
-        StopAssignment::select(['id', 'quay_ref'])
-            ->with('quay:stop_place_id,id')
-            ->chunkById(self::CHUNK_SIZE, function ($assignments) use ($bar) {
-                $stopIds = $assignments->keyBy('quay.stop_place_id')->keys();
-                StopPlace::whereKey($stopIds)->update(['active' => true]);
-                $bar->advance(self::CHUNK_SIZE);
-            });
-        $bar->finish();
-        $this->newLine();
+        $activator
+            ->withDeactProgress($this->stopProgressFactory(
+                $this->output->createProgressBar(),
+                "De-activating existing stops."
+            ))
+            ->withActProgress($this->stopProgressFactory(
+                $this->output->createProgressBar(),
+                "Activating stops seen in current route set."
+            ))
+            ->update();
         $this->info("Stop place activation complete.");
+    }
+
+    protected function stopProgressFactory(ProgressBar $bar, $startMsg = null)
+    {
+        return function ($current, $total) use ($bar, $startMsg) {
+            if (!$current) {
+                if ($startMsg) {
+                    $this->info($startMsg);
+                }
+                $bar->setMaxSteps($total);
+                $bar->start();
+            } elseif ($current >= $total) {
+                $bar->finish();
+                $this->newLine();
+            } else {
+                $bar->setProgress($current);
+            }
+        };
     }
 }
