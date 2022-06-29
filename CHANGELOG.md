@@ -7,6 +7,11 @@
   now a pivot table between `netex_vehicle_blocks` and
   `netex_vehicle_schedules`.
 - New `netex:status` artisan command.
+- Stop places now have an 'active' state, based on existence in
+  current route set.  Supplementary cli command
+  `netex:sync-active-stops` added, and this sync is done on both route
+  data and stop place uploads.  StopPlace model has an available query
+  scope, and also a local `$stop->active()` scope.
 
 ## [0.1.1] – 2022-04-06
 
