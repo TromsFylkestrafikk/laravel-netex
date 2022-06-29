@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\Console\Helper\ProgressBar;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexFileParser;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexDatabase;
+use TromsFylkestrafikk\Netex\Services\StopsActivator;
 
 class ImportRouteData extends Command
 {
@@ -48,7 +49,7 @@ class ImportRouteData extends Command
      *
      * @return int
      */
-    public function handle()
+    public function handle(StopsActivator $stopsActivator)
     {
         Log::info("NeTEx route data import starting...");
 
@@ -80,7 +81,10 @@ class ImportRouteData extends Command
         $parser = new NetexFileParser($mainXmlFile);
         $this->processMainFile($database, $parser);
         $this->processLineFiles($database, $parser, $files);
-
+        // Update 'active' stops, seen in this data set.
+        $this->info("Synchronizing active stops found in route set ...");
+        $stopsActivator->update();
+        $this->info("Synchronizing complete");
         Log::info("NeTEx route data import ended.");
         return self::SUCCESS;
     }
@@ -122,7 +126,7 @@ class ImportRouteData extends Command
         $this->progressBar->advance();
         $database->writeVehicleSchedules($parser->vehicleSchedules);
         $this->progressBar->finish();
-        $this->line("");
+        $this->newLine();
 
         // Free up menory.
         unset($parser->calendar);
@@ -158,6 +162,6 @@ class ImportRouteData extends Command
 
         $database->writeLines($parser->lines);
         $this->progressBar->finish();
-        $this->info("\nDONE!");
+        $this->newLine();
     }
 }

@@ -92,9 +92,11 @@ class StopsActivator
      *
      * @return $this
      */
-    protected function callProgress(Closure $callback)
+    protected function callProgress(Closure $callback = null)
     {
-        call_user_func($callback, $this->progress, $this->count);
+        if ($callback) {
+            call_user_func($callback, $this->progress, $this->count);
+        }
         return $this;
     }
 }
