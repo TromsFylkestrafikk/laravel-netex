@@ -10,8 +10,9 @@
 - Stop places now have an 'active' state, based on existence in
   current route set.  Supplementary cli command
   `netex:sync-active-stops` added, and this sync is done on both route
-  data and stop place uploads.  StopPlace model has an available query
-  scope, and also a local `$stop->active()` scope.
+  data and stop place uploads.  A new global global query scope is
+  added, though not utilized, buta local `$stop->active()` scope is
+  immediately available on stop models.
 
 ## [0.1.1] – 2022-04-06
 
