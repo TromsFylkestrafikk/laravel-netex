@@ -2,8 +2,10 @@
 
 namespace TromsFylkestrafikk\Netex\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use TromsFylkestrafikk\Netex\Scopes\ValidDateScope;
+use TromsFylkestrafikk\Netex\Scopes\ActiveScope;
 
 /**
  * \TromsFylkestrafikk\Netex\Models\StopPlace
@@ -30,24 +32,25 @@ use TromsFylkestrafikk\Netex\Scopes\ValidDateScope;
  * @property-read \Illuminate\Database\Eloquent\Collection|\TromsFylkestrafikk\Netex\Models\StopQuay[] $quays
  * @property-read int|null $quays_count
  * @property-read \TromsFylkestrafikk\Netex\Models\TopographicPlace|null $topographicPlace
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace query()
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereActive($value)
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereChanged($value)
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereCreated($value)
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereLatitude($value)
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereLongitude($value)
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereName($value)
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereParentSiteRef($value)
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereStopPlaceType($value)
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereTopographicPlaceRef($value)
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereUpdatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereValidFromDate($value)
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereValidToDate($value)
- * @method static \Illuminate\Database\Eloquent\Builder|StopPlace whereVersion($value)
+ * @method static Builder|StopPlace active()
+ * @method static Builder|StopPlace newModelQuery()
+ * @method static Builder|StopPlace newQuery()
+ * @method static Builder|StopPlace query()
+ * @method static Builder|StopPlace whereActive($value)
+ * @method static Builder|StopPlace whereChanged($value)
+ * @method static Builder|StopPlace whereCreated($value)
+ * @method static Builder|StopPlace whereCreatedAt($value)
+ * @method static Builder|StopPlace whereId($value)
+ * @method static Builder|StopPlace whereLatitude($value)
+ * @method static Builder|StopPlace whereLongitude($value)
+ * @method static Builder|StopPlace whereName($value)
+ * @method static Builder|StopPlace whereParentSiteRef($value)
+ * @method static Builder|StopPlace whereStopPlaceType($value)
+ * @method static Builder|StopPlace whereTopographicPlaceRef($value)
+ * @method static Builder|StopPlace whereUpdatedAt($value)
+ * @method static Builder|StopPlace whereValidFromDate($value)
+ * @method static Builder|StopPlace whereValidToDate($value)
+ * @method static Builder|StopPlace whereVersion($value)
  * @mixin \Eloquent
  */
 class StopPlace extends Model
@@ -60,6 +63,7 @@ class StopPlace extends Model
     {
         parent::boot();
         static::addGlobalScope(new ValidDateScope());
+        static::addGlobalScope(new ActiveScope());
     }
 
     public function quays()
