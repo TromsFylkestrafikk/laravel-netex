@@ -5,7 +5,6 @@ namespace TromsFylkestrafikk\Netex\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use TromsFylkestrafikk\Netex\Scopes\ValidDateScope;
-use TromsFylkestrafikk\Netex\Scopes\ActiveScope;
 
 /**
  * \TromsFylkestrafikk\Netex\Models\StopPlace
@@ -63,7 +62,6 @@ class StopPlace extends Model
     {
         parent::boot();
         static::addGlobalScope(new ValidDateScope());
-        static::addGlobalScope(new ActiveScope());
     }
 
     public function quays()
@@ -84,5 +82,10 @@ class StopPlace extends Model
     public function groups()
     {
         return $this->belongsToMany(GroupOfStopPlaces::class, 'netex_stop_place_group_member');
+    }
+
+    public function scopeActive(Builder $query)
+    {
+        $query->where('active', true);
     }
 }
