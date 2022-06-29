@@ -6,11 +6,8 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use SimpleXMLElement;
-use TromsFylkestrafikk\Netex\Models\StopPlace;
-use TromsFylkestrafikk\Netex\Models\GroupOfStopPlaces;
-use TromsFylkestrafikk\Netex\Models\TopographicPlace;
-use TromsFylkestrafikk\Netex\Models\StopQuay;
 use TromsFylkestrafikk\Xml\ChristmasTreeParser;
+use TromsFylkestrafikk\Netex\Services\StopsActivator;
 
 class ImportStops extends Command
 {
@@ -33,7 +30,7 @@ class ImportStops extends Command
     /**
      * Progress bar
      *
-     * @var Symfony\Component\Console\Helper\ProgressBar
+     * @var \Symfony\Component\Console\Helper\ProgressBar
      */
     protected $progressBar = null;
 
@@ -53,7 +50,7 @@ class ImportStops extends Command
     /**
      * Collections of items not seen during import, keyed by model name.
      *
-     * @var []
+     * @var \Illuminate\Support\Collection[]
      */
     protected $unseen = [];
 
@@ -78,7 +75,7 @@ class ImportStops extends Command
      *
      * @return mixed
      */
-    public function handle()
+    public function handle(StopsActivator $activator)
     {
         $xmlFile = $this->argument('xml');
         $this->logInfo("netex:importstops: BEGIN: %s", $xmlFile);
@@ -105,7 +102,9 @@ class ImportStops extends Command
             ->close();
         $this->progressBar->finish();
         // Needed to terminate progress bar.
-        $this->info("");
+        $this->newLine();
+        $this->info("Updating active stops ...");
+        $activator->update();
         if (!$this->option('keep')) {
             $this->deleteOld();
         }
@@ -172,10 +171,8 @@ class ImportStops extends Command
      * Parse and populate alternative IDs for given stop type (place or quay)
      *
      * @param SimpleXMLElement $xmlElement
-     * @param string $parentId
-     *   The real ID.
-     * @param string $base
-     *   Either 'stop_place' or 'stop_quay'.
+     * @param string $netexId The real ID.
+     * @param string $base Either 'stop_place' or 'stop_quay'.
      */
     protected function readAlternativeIds(SimpleXMLElement $xmlElement, $netexId, $base)
     {
@@ -186,10 +183,10 @@ class ImportStops extends Command
                 continue;
             }
 
-            $ids = explode(',', $keyVal->Value);
-            if (!$ids) {
+            if (!$keyVal->Value) {
                 continue;
             }
+            $ids = explode(',', $keyVal->Value);
             // Also, rid ourselves of pointers to other stop ids for the alternatives
             DB::table("netex_{$base}_alt_id")->whereIn('alt_id', $ids)->delete();
             DB::table("netex_{$base}_alt_id")->insert(array_map(function ($item) use ($netexId, $base) {
