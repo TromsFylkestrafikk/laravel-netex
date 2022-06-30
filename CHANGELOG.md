@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.1.2] – 2022-06-30
 
 ### Added
 - Vehicle blocks extracted to separate table. Vehicle schedules are
