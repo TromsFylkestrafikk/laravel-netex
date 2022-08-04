@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- Supports Laravel 9.x
+
 ## [0.1.2] – 2022-06-30
 
 ### Added
