@@ -257,6 +257,8 @@ class ImportStops extends Command
         $tzone->name = $xml->Name;
         $tzone->validFromDate = $xml->ValidBetween->FromDate;
         $tzone->validToDate = $xml->ValidBetween->ToDate;
+        $tzone->polygon_poslist = $this->getPolygonPoslist($xml);
+
         self::nullifyObjectProps($tzone, ['validFromDate', 'validToDate']);
         $tzone->save();
     }
@@ -288,6 +290,18 @@ class ImportStops extends Command
         ]);
         $topo->updated_at ? $this->updatedPlaces++ : $this->createdPlaces++;
         $topo->save();
+    }
+
+    /**
+     * @param SimpleXMLElement $xml
+     *
+     * @return null|string
+     */
+    protected function getPolygonPoslist(SimpleXMLElement $xml)
+    {
+        $xml->registerXPathNamespace('gis', 'http://www.opengis.net/gml/3.2');
+        $posXml = $xml->xpath('gis:Polygon/gis:exterior/gis:LinearRing/gis:posList');
+        return count($posXml) ? ((string) $posXml[0]) : null;
     }
 
     /**
