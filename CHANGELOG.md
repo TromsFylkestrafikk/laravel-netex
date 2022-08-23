@@ -10,6 +10,10 @@
 ### Changed
 - Supports Laravel 9.x
 
+### Fixed
+- Stop place import now properly counts available elements before
+  processing, giving a correct progress bar.
+
 ## [0.1.2] – 2022-06-30
 
 ### Added

@@ -4,6 +4,7 @@ namespace TromsFylkestrafikk\Netex\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use TromsFylkestrafikk\Netex\Models\StopQuay;
 
 /**
@@ -31,6 +32,9 @@ class StopAssignment extends Model
     protected $keyType = 'string';
     public $incrementing = false;
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function quay()
     {
         return $this->belongsTo(StopQuay::class, 'quay_ref');
