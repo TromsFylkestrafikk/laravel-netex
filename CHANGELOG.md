@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- Tariff Zones added and mapped with stop places. These include the
+  defined geographic polygon as GML posList.
+- Topographic places benefited from the same import as above and now
+  have the GML polygon area available.
 
 ### Changed
 - Supports Laravel 9.x
