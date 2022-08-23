@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use SimpleXMLElement;
+use TromsFylkestrafikk\Netex\Models\GroupOfStopPlaces;
 use TromsFylkestrafikk\Netex\Models\StopPlace;
 use TromsFylkestrafikk\Netex\Services\StopsActivator;
 use TromsFylkestrafikk\Xml\ChristmasTreeParser;
@@ -236,17 +237,14 @@ class ImportStops extends Command
         $this->readGroupStopPlaceMembers($groupXml, $group);
     }
 
-    protected function readGroupStopPlaceMembers($groupXml, $group)
+    protected function readGroupStopPlaceMembers($groupXml, GroupOfStopPlaces $group)
     {
-        DB::table('netex_stop_place_group_member')->where('group_of_stop_places_id', $group->id)->delete();
-        $memberships = [];
-        foreach ($groupXml->members->StopPlaceRef as $stopPlaceRef) {
-            $memberships[] = [
-                'stop_place_id' => $stopPlaceRef['ref'],
-                'group_of_stop_places_id' => $group->id,
-            ];
+        $group->stopPlaces()->detach();
+        if ($groupXml->members->StopPlaceRef) {
+            foreach ($groupXml->members->StopPlaceRef as $stopPlaceRef) {
+                $group->stopPlaces()->attach((string) $stopPlaceRef['ref']);
+            }
         }
-        DB::table('netex_stop_place_group_member')->insert($memberships);
     }
 
     public function readTariffZone(ChristmasTreeParser $reader)
@@ -260,7 +258,6 @@ class ImportStops extends Command
             Log::debug('Unable to create or get model for tariff zone');
             return;
         }
-        Log::debug("Got tariff zone " . $xml->Name);
         $tzone->name = $xml->Name;
         $tzone->validFromDate = $xml->ValidBetween->FromDate;
         $tzone->validToDate = $xml->ValidBetween->ToDate;
@@ -389,7 +386,7 @@ class ImportStops extends Command
             ->addCallback(['SiteFrame', 'tariffZones', 'TariffZone'], $counter)
             ->parse()
             ->close();
-        $this->info(sprintf("Found %d elements", $this->xmlElements));
+        $this->info(sprintf("Found %d processable elements in XML file", $this->xmlElements));
         return $this->xmlElements;
     }
 
@@ -402,7 +399,7 @@ class ImportStops extends Command
             $this->createdPlaces
         ));
         $this->info(sprintf(
-            "TaroffZone: %d processed, %d updated, %d created",
+            "TariffZone: %d processed, %d updated, %d created",
             $this->processedTariffs,
             $this->updatedTariffs,
             $this->createdTariffs
@@ -421,7 +418,7 @@ class ImportStops extends Command
         ));
         if (!$this->option('keep')) {
             $this->info(sprintf(
-                "DELETIONS: StopPlace: %d, StopQuay: %d, GroupOfStopPlaces: %d, TariffPlace: %d, TopographicPlace: %d",
+                "DELETIONS: StopPlace: %d, StopQuay: %d, GroupOfStopPlaces: %d, TariffZone: %d, TopographicPlace: %d",
                 $this->unseen['StopPlace']->count(),
                 $this->unseen['StopQuay']->count(),
                 $this->unseen['GroupOfStopPlaces']->count(),
