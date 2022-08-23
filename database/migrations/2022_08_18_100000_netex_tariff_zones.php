@@ -15,8 +15,14 @@ class NetexTariffZones extends Migration
     {
         Schema::create('netex_tariff_zone', function (Blueprint $table) {
             $table->char('id', 64)->primary();
+            $table->char('version', 10);
+            $table->dateTime('created')->nullable();
+            $table->dateTime('changed')->nullable();
             $table->char('name', 64);
-            $table->mediumText('polygon_poslist');
+            $table->mediumText('polygon_poslist')->nullable();
+            $table->dateTime('validFromDate')->nullable();
+            $table->dateTime('validToDate')->nullable();
+            $table->timestamps();
         });
 
         Schema::create('netex_stop_tariff_zone', function (Blueprint $table) {

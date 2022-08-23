@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use SimpleXMLElement;
+use TromsFylkestrafikk\Netex\Models\StopPlace;
 use TromsFylkestrafikk\Xml\ChristmasTreeParser;
 use TromsFylkestrafikk\Netex\Services\StopsActivator;
 
@@ -58,7 +59,7 @@ class ImportStops extends Command
      * Array of all elements/models that has id, version, changed and updated
      * attributes.
      */
-    protected $models = ['StopPlace', 'StopQuay', 'GroupOfStopPlaces', 'TopographicPlace'];
+    protected $models = ['StopPlace', 'StopQuay', 'GroupOfStopPlaces', 'TariffZone', 'TopographicPlace'];
 
     /**
      * Create a new command instance.
@@ -88,16 +89,21 @@ class ImportStops extends Command
         $this->unseen['StopQuay'] = DB::table('netex_stop_quay')->pluck('id', 'id');
         $this->unseen['GroupOfStopPlaces'] = DB::table('netex_group_of_stop_places')->pluck('id', 'id');
         $this->unseen['TopographicPlace'] = DB::table('netex_topographic_place')->pluck('id', 'id');
+        $this->unseen['TariffZone'] = DB::table('netex_tariff_zone')->pluck('id', 'id');
         $this->progressBar = $this->output->createProgressBar(array_reduce(
-            ['StopPlace', 'GroupOfStopPlaces', 'TopographicPlace'],
+            ['StopPlace', 'GroupOfStopPlaces', 'TopographicPlace', 'TariffZone'],
             function ($carry, $item) {
                 return $carry +  $this->unseen[$item]->count();
             }
         ));
         $this->progressBar->start();
-        $reader->addCallback(['SiteFrame', 'stopPlaces', 'StopPlace'], [$this, 'readStopPlace'])
+            /*
+            ->addCallback(['SiteFrame', 'stopPlaces', 'StopPlace'], [$this, 'readStopPlace'])
             ->addCallback(['SiteFrame', 'groupsOfStopPlaces', 'GroupOfStopPlaces'], [$this, 'readGroupOfStopPlaces'])
             ->addCallback(['SiteFrame', 'topographicPlaces', 'TopographicPlace'], [$this, 'readTopographicPlace'])
+            */
+        $reader
+            ->addCallback(['SiteFrame', 'tariffZones', 'TariffZone'], [$this, 'readTariffZone'])
             ->parse()
             ->close();
         $this->progressBar->finish();
@@ -139,6 +145,7 @@ class ImportStops extends Command
         $stop->updated_at ? $this->updatedStops++ : $this->createdStops++;
         $stop->save();
         $this->readAlternativeIds($stopXml, $stop->id, 'stop_place');
+        $this->readStopTariffZones($stopXml, $stop);
     }
 
     /**
@@ -196,6 +203,15 @@ class ImportStops extends Command
         }
     }
 
+    protected function readStopTariffZones($stopXml, StopPlace $stop)
+    {
+        $stop->tariffZones()->detach();
+        foreach ($stopXml->tariffZones->TariffZoneRef as $tzXml) {
+            Log::debug($tzXml['ref']);
+            $stop->tariffZones()->attach((string) $tzXml['ref']);
+        }
+    }
+
     /**
      * Callback handler for SiteFrame//groupsOfStopPlaces//GroupOfStopPlaces.
      */
@@ -226,6 +242,23 @@ class ImportStops extends Command
             ];
         }
         DB::table('netex_stop_place_group_member')->insert($memberships);
+    }
+
+    public function readTariffZone(ChristmasTreeParser $reader)
+    {
+        $xml = $reader->expandSimpleXml();
+        /** @var \TromsFylkestrafikk\Netex\Models\TariffZone|null $tzone */
+        $tzone = $this->prepareNetexModel($xml, 'TariffZone');
+        if (!$tzone) {
+            Log::debug('Unable to create or get model for tariff zone');
+            return;
+        }
+        Log::debug("Got tariff zone " . $xml->Name);
+        $tzone->name = $xml->Name;
+        $tzone->validFromDate = $xml->ValidBetween->FromDate;
+        $tzone->validToDate = $xml->ValidBetween->ToDate;
+        self::nullifyObjectProps($tzone, ['validFromDate', 'validToDate']);
+        $tzone->save();
     }
 
     /**

@@ -88,4 +88,9 @@ class StopPlace extends Model
     {
         $query->where('active', true);
     }
+
+    public function tariffZones()
+    {
+        return $this->belongsToMany(TariffZone::class, 'netex_stop_tariff_zone');
+    }
 }
