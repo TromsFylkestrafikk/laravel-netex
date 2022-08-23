@@ -30,6 +30,10 @@ class NetexTariffZones extends Migration
             $table->char('tariff_zone_id', 64);
             $table->unique(['stop_place_id', 'tariff_zone_id']);
         });
+
+        Schema::table('netex_topographic_place', function (Blueprint $table) {
+            $table->mediumText('polygon_poslist')->nullable()->after('topographicPlaceType');
+        });
     }
 
     /**
@@ -41,5 +45,9 @@ class NetexTariffZones extends Migration
     {
         Schema::dropIfExists('netex_tariff_zone');
         Schema::dropIfExists('netex_stop_tariff_zone');
+
+        Schema::table('netex_topographic_place', function (Blueprint $table) {
+            $table->dropColumn('polygon_poslist');
+        });
     }
 }

@@ -279,6 +279,7 @@ class ImportStops extends Command
         $topo->parentTopographicPlaceRef = $placeXml->ParentTopographicPlaceRef['ref'];
         $topo->validFromDate = $placeXml->ValidBetween->FromDate;
         $topo->validToDate = $placeXml->ValidBetween->ToDate;
+        $topo->polygon_poslist = $this->getPolygonPoslist($placeXml);
 
         self::nullifyObjectProps($topo, [
             'topographicPlaceType',
