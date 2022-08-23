@@ -48,6 +48,9 @@ class TariffZone extends Model
         static::addGlobalScope(new ValidDateScope());
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
     protected function stopPlaces()
     {
         return $this->belongsToMany(StopPlace::class, 'netex_stop_tariff_zone');
