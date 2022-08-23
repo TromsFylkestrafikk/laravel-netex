@@ -33,10 +33,10 @@ class StopsActivator
      */
     public function update()
     {
-        Log::info("[Netes StopsActivator] Updating active stops found in current route data set");
+        Log::info("[Netex StopsActivator] Updating active stops found in current route data set");
         $this->count = StopPlace::whereActive(true)->count();
         $this->callProgress($this->deactProgressCb);
-        Log::debug("[Netes StopsActivator] Deactivating {$this->count} active stops ...");
+        Log::debug("[Netex StopsActivator] Deactivating {$this->count} active stops ...");
         StopPlace::whereActive(true)->chunkById(self::CHUNK_SIZE, function ($stops) {
             $this->progress += $stops->count();
             StopPlace::whereKey($stops->pluck('id')->toArray())->update(['active' => false]);
@@ -46,7 +46,7 @@ class StopsActivator
         $stopsUpdated = 0;
         $this->progress = 0;
         $this->count = StopAssignment::count();
-        Log::debug("[Netes StopsActivator] De-activation complete. Activating using {$this->count} StopAssignments.");
+        Log::debug("[Netex StopsActivator] De-activation complete. Activating using {$this->count} StopAssignments.");
         // Get 'seen' stops with regtopp ID.
         $this->callProgress($this->actProgressCb);
         StopAssignment::select(['id', 'quay_ref'])
@@ -59,7 +59,7 @@ class StopsActivator
                     ->update(['active' => true]);
                 $this->callProgress($this->actProgressCb);
             });
-        Log::info("[Netes StopsActivator] Activation complete. Found ${stopsUpdated} active stop places");
+        Log::info("[Netex StopsActivator] Activation complete. Found ${stopsUpdated} active stop places");
         return $this;
     }
 

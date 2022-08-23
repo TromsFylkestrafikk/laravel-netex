@@ -3,11 +3,14 @@
 namespace TromsFylkestrafikk\Netex\Console;
 
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use SimpleXMLElement;
-use TromsFylkestrafikk\Xml\ChristmasTreeParser;
+use TromsFylkestrafikk\Netex\Models\GroupOfStopPlaces;
+use TromsFylkestrafikk\Netex\Models\StopPlace;
 use TromsFylkestrafikk\Netex\Services\StopsActivator;
+use TromsFylkestrafikk\Xml\ChristmasTreeParser;
 
 class ImportStops extends Command
 {
@@ -35,17 +38,27 @@ class ImportStops extends Command
     protected $progressBar = null;
 
     /**
+     * Number of elements to parse in XML.
+     *
+     * @var int
+     */
+    protected $xmlElements = 0;
+
+    /**
      * Import statistics.
      */
     protected $processedStops = 0;
     protected $processedGroups = 0;
     protected $processedPlaces = 0;
+    protected $processedTariffs = 0;
     protected $updatedStops = 0;
     protected $updatedGroups = 0;
     protected $updatedPlaces = 0;
+    protected $updatedTariffs = 0;
     protected $createdStops = 0;
     protected $createdGroups = 0;
     protected $createdPlaces = 0;
+    protected $createdTariffs = 0;
 
     /**
      * Collections of items not seen during import, keyed by model name.
@@ -58,7 +71,7 @@ class ImportStops extends Command
      * Array of all elements/models that has id, version, changed and updated
      * attributes.
      */
-    protected $models = ['StopPlace', 'StopQuay', 'GroupOfStopPlaces', 'TopographicPlace'];
+    protected $models = ['StopPlace', 'StopQuay', 'GroupOfStopPlaces', 'TariffZone', 'TopographicPlace'];
 
     /**
      * Create a new command instance.
@@ -78,26 +91,23 @@ class ImportStops extends Command
     public function handle(StopsActivator $activator)
     {
         $xmlFile = $this->argument('xml');
-        $this->logInfo("netex:importstops: BEGIN: %s", $xmlFile);
+        $this->logInfo("[netex:importstops] BEGIN: %s", $xmlFile);
+        $this->scanXml($xmlFile);
         $reader = new ChristmasTreeParser();
-        if (!$reader->open($xmlFile)) {
-            $this->error("Could not open XML file for reading: '$xmlFile'");
-        }
+        $reader->open($xmlFile);
         $this->info("Importing ...");
         $this->unseen['StopPlace'] = DB::table('netex_stop_place')->pluck('id', 'id');
         $this->unseen['StopQuay'] = DB::table('netex_stop_quay')->pluck('id', 'id');
         $this->unseen['GroupOfStopPlaces'] = DB::table('netex_group_of_stop_places')->pluck('id', 'id');
         $this->unseen['TopographicPlace'] = DB::table('netex_topographic_place')->pluck('id', 'id');
-        $this->progressBar = $this->output->createProgressBar(array_reduce(
-            ['StopPlace', 'GroupOfStopPlaces', 'TopographicPlace'],
-            function ($carry, $item) {
-                return $carry +  $this->unseen[$item]->count();
-            }
-        ));
+        $this->unseen['TariffZone'] = DB::table('netex_tariff_zone')->pluck('id', 'id');
+        $this->progressBar = $this->output->createProgressBar($this->xmlElements);
         $this->progressBar->start();
-        $reader->addCallback(['SiteFrame', 'stopPlaces', 'StopPlace'], [$this, 'readStopPlace'])
+        $reader
+            ->addCallback(['SiteFrame', 'stopPlaces', 'StopPlace'], [$this, 'readStopPlace'])
             ->addCallback(['SiteFrame', 'groupsOfStopPlaces', 'GroupOfStopPlaces'], [$this, 'readGroupOfStopPlaces'])
             ->addCallback(['SiteFrame', 'topographicPlaces', 'TopographicPlace'], [$this, 'readTopographicPlace'])
+            ->addCallback(['SiteFrame', 'tariffZones', 'TariffZone'], [$this, 'readTariffZone'])
             ->parse()
             ->close();
         $this->progressBar->finish();
@@ -109,6 +119,7 @@ class ImportStops extends Command
             $this->deleteOld();
         }
         $this->importSummary();
+        return self::SUCCESS;
     }
 
     /**
@@ -139,6 +150,7 @@ class ImportStops extends Command
         $stop->updated_at ? $this->updatedStops++ : $this->createdStops++;
         $stop->save();
         $this->readAlternativeIds($stopXml, $stop->id, 'stop_place');
+        $this->readStopTariffZones($stopXml, $stop);
     }
 
     /**
@@ -196,6 +208,16 @@ class ImportStops extends Command
         }
     }
 
+    protected function readStopTariffZones($stopXml, StopPlace $stop)
+    {
+        $stop->tariffZones()->detach();
+        if ($stopXml->tariffZones->TariffZoneRef) {
+            foreach ($stopXml->tariffZones->TariffZoneRef as $tzXml) {
+                $stop->tariffZones()->attach((string) $tzXml['ref']);
+            }
+        }
+    }
+
     /**
      * Callback handler for SiteFrame//groupsOfStopPlaces//GroupOfStopPlaces.
      */
@@ -215,17 +237,35 @@ class ImportStops extends Command
         $this->readGroupStopPlaceMembers($groupXml, $group);
     }
 
-    protected function readGroupStopPlaceMembers($groupXml, $group)
+    protected function readGroupStopPlaceMembers($groupXml, GroupOfStopPlaces $group)
     {
-        DB::table('netex_stop_place_group_member')->where('group_of_stop_places_id', $group->id)->delete();
-        $memberships = [];
-        foreach ($groupXml->members->StopPlaceRef as $stopPlaceRef) {
-            $memberships[] = [
-                'stop_place_id' => $stopPlaceRef['ref'],
-                'group_of_stop_places_id' => $group->id,
-            ];
+        $group->stopPlaces()->detach();
+        if ($groupXml->members->StopPlaceRef) {
+            foreach ($groupXml->members->StopPlaceRef as $stopPlaceRef) {
+                $group->stopPlaces()->attach((string) $stopPlaceRef['ref']);
+            }
         }
-        DB::table('netex_stop_place_group_member')->insert($memberships);
+    }
+
+    public function readTariffZone(ChristmasTreeParser $reader)
+    {
+        $this->processedTariffs++;
+        $this->progressBar->advance();
+        $xml = $reader->expandSimpleXml();
+        /** @var \TromsFylkestrafikk\Netex\Models\TariffZone|null $tzone */
+        $tzone = $this->prepareNetexModel($xml, 'TariffZone');
+        if (!$tzone) {
+            Log::debug('Unable to create or get model for tariff zone');
+            return;
+        }
+        $tzone->name = $xml->Name;
+        $tzone->validFromDate = $xml->ValidBetween->FromDate;
+        $tzone->validToDate = $xml->ValidBetween->ToDate;
+        $tzone->polygon_poslist = $this->getPolygonPoslist($xml);
+        $tzone->updated_at ? $this->updatedTariffs++ : $this->createdTariffs++;
+
+        self::nullifyObjectProps($tzone, ['validFromDate', 'validToDate']);
+        $tzone->save();
     }
 
     /**
@@ -245,6 +285,7 @@ class ImportStops extends Command
         $topo->parentTopographicPlaceRef = $placeXml->ParentTopographicPlaceRef['ref'];
         $topo->validFromDate = $placeXml->ValidBetween->FromDate;
         $topo->validToDate = $placeXml->ValidBetween->ToDate;
+        $topo->polygon_poslist = $this->getPolygonPoslist($placeXml);
 
         self::nullifyObjectProps($topo, [
             'topographicPlaceType',
@@ -255,6 +296,18 @@ class ImportStops extends Command
         ]);
         $topo->updated_at ? $this->updatedPlaces++ : $this->createdPlaces++;
         $topo->save();
+    }
+
+    /**
+     * @param SimpleXMLElement $xml
+     *
+     * @return null|string
+     */
+    protected function getPolygonPoslist(SimpleXMLElement $xml)
+    {
+        $xml->registerXPathNamespace('gis', 'http://www.opengis.net/gml/3.2');
+        $posXml = $xml->xpath('gis:Polygon/gis:exterior/gis:LinearRing/gis:posList');
+        return count($posXml) ? ((string) $posXml[0]) : null;
     }
 
     /**
@@ -314,6 +367,29 @@ class ImportStops extends Command
         DB::table('netex_stop_quay_alt_id')->whereIn('stop_quay_id', $this->unseen['StopQuay']->toArray())->delete();
     }
 
+    /**
+     * Scan XML quickly and count targeted elements.
+     *
+     * @param string $xmlFile Input XML file
+     *
+     * @return int
+     */
+    protected function scanXml($xmlFile)
+    {
+        $reader = new ChristmasTreeParser();
+        $reader->open($xmlFile);
+        $counter = fn () => $this->xmlElements++;
+        $reader
+            ->addCallback(['SiteFrame', 'stopPlaces', 'StopPlace'], $counter)
+            ->addCallback(['SiteFrame', 'groupsOfStopPlaces', 'GroupOfStopPlaces'], $counter)
+            ->addCallback(['SiteFrame', 'topographicPlaces', 'TopographicPlace'], $counter)
+            ->addCallback(['SiteFrame', 'tariffZones', 'TariffZone'], $counter)
+            ->parse()
+            ->close();
+        $this->info(sprintf("Found %d processable elements in XML file", $this->xmlElements));
+        return $this->xmlElements;
+    }
+
     protected function importSummary()
     {
         $this->info(sprintf(
@@ -321,6 +397,12 @@ class ImportStops extends Command
             $this->processedPlaces,
             $this->updatedPlaces,
             $this->createdPlaces
+        ));
+        $this->info(sprintf(
+            "TariffZone: %d processed, %d updated, %d created",
+            $this->processedTariffs,
+            $this->updatedTariffs,
+            $this->createdTariffs
         ));
         $this->info(sprintf(
             "GroupOfStopPlaces: %d processed, %d updated, %d created",
@@ -336,18 +418,22 @@ class ImportStops extends Command
         ));
         if (!$this->option('keep')) {
             $this->info(sprintf(
-                "DELETIONS: StopPlace: %d, StopQuay: %d, GroupOfStopPlaces: %d, TopographicPlace: %d",
+                "DELETIONS: StopPlace: %d, StopQuay: %d, GroupOfStopPlaces: %d, TariffZone: %d, TopographicPlace: %d",
                 $this->unseen['StopPlace']->count(),
                 $this->unseen['StopQuay']->count(),
                 $this->unseen['GroupOfStopPlaces']->count(),
+                $this->unseen['TariffZone']->count(),
                 $this->unseen['TopographicPlace']->count(),
             ));
         }
         $this->logInfo(
-            "netex:importstops: END. Imported %d stops. %d new, %d updated.",
+            "[netex:importstops] END. Imported %d stops. %d new, %d updated. Processed %d groups of stop places, %d tariff zones and %d topographic places",
             $this->processedStops,
             $this->createdStops,
-            $this->updatedStops
+            $this->updatedStops,
+            $this->processedGroups,
+            $this->processedTariffs,
+            $this->processedPlaces
         );
     }
 

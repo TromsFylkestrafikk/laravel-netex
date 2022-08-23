@@ -64,24 +64,44 @@ class StopPlace extends Model
         static::addGlobalScope(new ValidDateScope());
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function quays()
     {
         return $this->hasMany(StopQuay::class);
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function altIds()
     {
         return $this->hasMany(StopPlaceAltId::class);
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function topographicPlace()
     {
         return $this->belongsTo(TopographicPlace::class, 'topographicPlaceRef');
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
     public function groups()
     {
         return $this->belongsToMany(GroupOfStopPlaces::class, 'netex_stop_place_group_member');
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function tariffZones()
+    {
+        return $this->belongsToMany(TariffZone::class, 'netex_stop_tariff_zone');
     }
 
     public function scopeActive(Builder $query)

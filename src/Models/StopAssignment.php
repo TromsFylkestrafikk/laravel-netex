@@ -31,6 +31,9 @@ class StopAssignment extends Model
     protected $keyType = 'string';
     public $incrementing = false;
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function quay()
     {
         return $this->belongsTo(StopQuay::class, 'quay_ref');

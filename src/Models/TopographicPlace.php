@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $validToDate
  * @property string|null $isoCode
  * @property string $topographicPlaceType
+ * @property string|null $polygon_poslist
  * @property string|null $parentTopographicPlaceref
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -32,6 +33,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|TopographicPlace whereIsoCode($value)
  * @method static \Illuminate\Database\Eloquent\Builder|TopographicPlace whereName($value)
  * @method static \Illuminate\Database\Eloquent\Builder|TopographicPlace whereParentTopographicPlaceref($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|TopographicPlace wherePolygonPoslist($value)
  * @method static \Illuminate\Database\Eloquent\Builder|TopographicPlace whereTopographicPlaceType($value)
  * @method static \Illuminate\Database\Eloquent\Builder|TopographicPlace whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|TopographicPlace whereValidFromDate($value)

@@ -38,6 +38,9 @@ class GroupOfStopPlaces extends Model
     public $incrementing = false;
     protected $keyType = 'string';
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
     public function stopPlaces()
     {
         return $this->belongsToMany(StopPlace::class, 'netex_stop_place_group_member');
