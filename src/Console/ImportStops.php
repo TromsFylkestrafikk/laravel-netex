@@ -97,12 +97,10 @@ class ImportStops extends Command
             }
         ));
         $this->progressBar->start();
-            /*
+        $reader
             ->addCallback(['SiteFrame', 'stopPlaces', 'StopPlace'], [$this, 'readStopPlace'])
             ->addCallback(['SiteFrame', 'groupsOfStopPlaces', 'GroupOfStopPlaces'], [$this, 'readGroupOfStopPlaces'])
             ->addCallback(['SiteFrame', 'topographicPlaces', 'TopographicPlace'], [$this, 'readTopographicPlace'])
-            */
-        $reader
             ->addCallback(['SiteFrame', 'tariffZones', 'TariffZone'], [$this, 'readTariffZone'])
             ->parse()
             ->close();
@@ -206,9 +204,10 @@ class ImportStops extends Command
     protected function readStopTariffZones($stopXml, StopPlace $stop)
     {
         $stop->tariffZones()->detach();
-        foreach ($stopXml->tariffZones->TariffZoneRef as $tzXml) {
-            Log::debug($tzXml['ref']);
-            $stop->tariffZones()->attach((string) $tzXml['ref']);
+        if ($stopXml->tariffZones->TariffZoneRef) {
+            foreach ($stopXml->tariffZones->TariffZoneRef as $tzXml) {
+                $stop->tariffZones()->attach((string) $tzXml['ref']);
+            }
         }
     }
 
