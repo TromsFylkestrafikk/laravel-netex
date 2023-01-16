@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.1.3] – 2023-01-16
 ### Added
 - Tariff Zones added and mapped with stop places. These include the
   defined geographic polygon as GML posList.
