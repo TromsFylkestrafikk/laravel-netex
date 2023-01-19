@@ -64,6 +64,20 @@ class RouteActivator
     protected $journeyCallback;
 
     /**
+     * Keep track of seen call IDs to detect duplicates.
+     *
+     * @var bool[]
+     */
+    protected $callIds = [];
+
+    /**
+     * Keep track of seen journey IDs to detect duplicates.
+     *
+     * @var bool[]
+     */
+    protected $aJourneyIds = [];
+
+    /**
      * Create a new command instance.
      *
      * @param string|null $fromDate
@@ -111,8 +125,8 @@ class RouteActivator
         $toDate = new Carbon($this->toDate);
 
         Log::info(sprintf("NeTEx: Activating route data between %s and %s", $this->fromDate, $this->toDate));
-        $this->journeyDumper = new DbBulkInsert('netex_active_journeys');
-        $this->callDumper = new DbBulkInsert('netex_active_calls');
+        $this->journeyDumper = new DbBulkInsert('netex_active_journeys', 'insertOrIgnore');
+        $this->callDumper = new DbBulkInsert('netex_active_calls', 'insertOrIgnore');
         $this->dayCount = 0;
         $this->callFillable = array_flip((new ActiveCall())->getFillable());
         $this->journeyFillable = array_flip((new ActiveJourney())->getFillable());
@@ -120,6 +134,9 @@ class RouteActivator
         $prevJourneyCount = 0;
         $prevCallCount = 0;
         while ($date <= $toDate) {
+            // Reset internal overview of seen IDs
+            $this->callIds = [];
+            $this->aJourneyIds = [];
             $dateStr = $date->format('Y-m-d');
             $rawJourneys = $this->getRawJourneys($dateStr);
             $this->activateJourneys($dateStr, $rawJourneys);
@@ -245,7 +262,18 @@ class RouteActivator
         foreach ($rawJourneys as $rawJourney) {
             $jRec = array_intersect_key((array) $rawJourney, $this->journeyFillable);
             $jRec['date'] = $date;
-            $jRec['id'] = $this->makeJourneyId($jRec);
+            $jId = $this->makeJourneyId($jRec);
+            if (!empty($this->aJourneyIds[$jId])) {
+                Log::error(sprintf(
+                    'NeTEx: Duplicate active journey ID detected: %s. Journey ID: %s (%s)',
+                    $jId,
+                    $jRec['vehicle_journey_id'],
+                    $jRec['name']
+                ));
+                return;
+            }
+            $this->aJourneyIds[$jId] = true;
+            $jRec['id'] = $jId;
             $this->activateJourneyCalls($jRec);
             $this->journeyDumper->addRecord($jRec);
             $this->invoke($this->journeyCallback, $jRec);
@@ -310,6 +338,18 @@ class RouteActivator
      */
     protected function activateCall(array $jRec, array $rawCall)
     {
+        $callId = $this->makeCallId($rawCall, $jRec['id']);
+        if (!empty($this->callIds[$callId])) {
+            Log::error(sprintf(
+                "NeTEx activation: Duplicate active call detected: %s on journey ID %s. Call time: %s (%s)",
+                $callId,
+                $jRec['vehicle_journey_id'],
+                $rawCall['call_time'],
+                $rawCall['stop_place_name']
+            ));
+            return;
+        }
+        $this->callIds[$callId] = true;
         $this->callDumper->addRecord(array_merge(
             array_intersect_key($rawCall, $this->callFillable),
             [
