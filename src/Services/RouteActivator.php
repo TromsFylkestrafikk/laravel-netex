@@ -134,6 +134,9 @@ class RouteActivator
         $prevJourneyCount = 0;
         $prevCallCount = 0;
         while ($date <= $toDate) {
+            // Reset internal overview of seen IDs
+            $this->callIds = [];
+            $this->aJourneyIds = [];
             $dateStr = $date->format('Y-m-d');
             $rawJourneys = $this->getRawJourneys($dateStr);
             $this->activateJourneys($dateStr, $rawJourneys);
