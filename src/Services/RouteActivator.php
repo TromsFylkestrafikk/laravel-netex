@@ -270,7 +270,7 @@ class RouteActivator
                     $jRec['vehicle_journey_id'],
                     $jRec['name']
                 ));
-                return;
+                continue;
             }
             $this->aJourneyIds[$jId] = true;
             $jRec['id'] = $jId;
