@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\Console\Helper\ProgressBar;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexFileParser;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexDatabase;
+use TromsFylkestrafikk\Netex\Models\ImportStatus;
 use TromsFylkestrafikk\Netex\Services\StopsActivator;
 
 class ImportRouteData extends Command
@@ -52,6 +53,7 @@ class ImportRouteData extends Command
     public function handle(StopsActivator $stopsActivator)
     {
         Log::info("NeTEx route data import starting...");
+        $importStatus = new ImportStatus();
 
         // Check input parameters.
         $netexDir = $this->argument('path');
@@ -59,11 +61,13 @@ class ImportRouteData extends Command
         if (strpos($mainXmlFile, '.xml', -4) === false) {
             $this->error("Unrecognized file extension! Only XML is supported.");
             Log::error("Unrecognized file extension! Only XML is supported.");
+            $importStatus->setError();
             return self::FAILURE;
         }
         if (!file_exists($mainXmlFile)) {
             $this->error("Main NeTEx XML file ($mainXmlFile) was not found!");
             Log::error("Main NeTEx XML file ($mainXmlFile) was not found!");
+            $importStatus->setError();
             return self::FAILURE;
         }
         $files = array_filter(
@@ -73,6 +77,7 @@ class ImportRouteData extends Command
         if (count($files) <= 1) {
             $this->error("No NeTEx line files (XML) found in $netexDir");
             Log::error("No NeTEx line files (XML) found in $netexDir");
+            $importStatus->setError();
             return self::FAILURE;
         }
 

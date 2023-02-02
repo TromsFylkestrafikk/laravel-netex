@@ -5,6 +5,7 @@ namespace TromsFylkestrafikk\Netex\Console;
 use Illuminate\Console\Command;
 use TromsFylkestrafikk\Netex\Services\RouteActivator;
 use TromsFylkestrafikk\Netex\Console\Traits\ActivateProgress;
+use TromsFylkestrafikk\Netex\Models\ImportStatus;
 
 class ActivateRoutedata extends Command
 {
@@ -87,6 +88,10 @@ class ActivateRoutedata extends Command
             $stats['journeys'],
             $stats['calls']
         ));
+        if ($stats['errors']) {
+            $importStatus = new ImportStatus();
+            $importStatus->setError();
+        }
         return static::SUCCESS;
     }
 }

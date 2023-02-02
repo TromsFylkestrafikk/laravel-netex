@@ -78,6 +78,11 @@ class RouteActivator
     protected $aJourneyIds = [];
 
     /**
+     * Error indicator (e.g. for duplicate journey/call IDs).
+     */
+    protected $hasErrors = false;
+
+    /**
      * Create a new command instance.
      *
      * @param string|null $fromDate
@@ -231,6 +236,7 @@ class RouteActivator
             'days' => $this->dayCount,
             'journeys' => $this->journeyDumper->getRecordsWritten(),
             'calls' => $this->callDumper->getRecordsWritten(),
+            'errors' => $this->hasErrors,
         ];
     }
 
@@ -270,6 +276,7 @@ class RouteActivator
                     $jRec['vehicle_journey_id'],
                     $jRec['name']
                 ));
+                $this->hasErrors = true;
                 continue;
             }
             $this->aJourneyIds[$jId] = true;
@@ -347,6 +354,7 @@ class RouteActivator
                 $rawCall['call_time'],
                 $rawCall['stop_place_name']
             ));
+            $this->hasErrors = true;
             return;
         }
         $this->callIds[$callId] = true;
