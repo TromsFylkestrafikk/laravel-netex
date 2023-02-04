@@ -4,6 +4,7 @@
 
 ### Fixed
 - Activation will not choke on duplicate journeys/calls in route set.
+- Increased length of name* related columns
 
 ## [0.1.3] – 2023-01-16
 
