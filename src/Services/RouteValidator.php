@@ -54,15 +54,8 @@ class RouteValidator
     public function validateActivationPeriod($endDate)
     {
         Log::debug('Validating routedata.');
-        $days = 0;
-        $date = date('Y-m-d');
+        $date = Carbon::now()->format('Y-m-d');
         do {
-            if ($days > 0) {
-                $offset = sprintf("%d days", $days);
-                $date = date('Y-m-d', strtotime($offset));
-            }
-            $days++;
-
             $mismatch = $this->validateJourneys($date);
             if ($mismatch) {
                 $this->activationDates[] = $date;
@@ -72,7 +65,8 @@ class RouteValidator
                     call_user_func($this->onMatchingContentCallback, $date);
                 }
             }
-        } while ($date < $endDate);
+            $date = Carbon::parse($date)->addDay()->format('Y-m-d');
+        } while ($date <= $endDate);
         Log::debug('Validation completed.');
     }
 
@@ -102,9 +96,7 @@ class RouteValidator
 
             // Find and remove journey from old collection.
             $id = $jRec['id'];
-            $index = $oldJourneys->search(function ($item) use ($id) {
-                return $item->id === $id;
-            });
+            $index = $oldJourneys->search(fn ($item) => $item->id === $id);
             if ($index === false) {
                 // ID not found in existing database table.
                 return true;
@@ -152,9 +144,7 @@ class RouteValidator
             );
 
             // Find and remove call from old collection.
-            $index = $oldCalls->search(function ($item) use ($callId) {
-                return $item->id === $callId;
-            });
+            $index = $oldCalls->search(fn ($item) => $item->id === $callId);
             if ($index === false) {
                 // ID not found in existing database table.
                 return true;
