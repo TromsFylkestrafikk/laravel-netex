@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\Console\Helper\ProgressBar;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexFileParser;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexDatabase;
-use TromsFylkestrafikk\Netex\Models\ImportStatus;
+use TromsFylkestrafikk\Netex\Services\RouteImportStatus;
 use TromsFylkestrafikk\Netex\Services\StopsActivator;
 
 class ImportRouteData extends Command
@@ -53,7 +53,7 @@ class ImportRouteData extends Command
     public function handle(StopsActivator $stopsActivator)
     {
         Log::info("NeTEx route data import starting...");
-        $importStatus = new ImportStatus();
+        $importStatus = new RouteImportStatus();
 
         // Check input parameters.
         $netexDir = $this->argument('path');
