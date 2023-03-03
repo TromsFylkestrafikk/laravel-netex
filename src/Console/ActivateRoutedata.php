@@ -3,8 +3,8 @@
 namespace TromsFylkestrafikk\Netex\Console;
 
 use Illuminate\Console\Command;
+use TromsFylkestrafikk\Netex\Models\ImportStatus;
 use TromsFylkestrafikk\Netex\Services\RouteActivator;
-use TromsFylkestrafikk\Netex\Services\RouteImportStatus;
 use TromsFylkestrafikk\Netex\Console\Traits\ActivateProgress;
 
 class ActivateRoutedata extends Command
@@ -17,8 +17,9 @@ class ActivateRoutedata extends Command
      * @var string
      */
     protected $signature = 'netex:activate
-                            {from-date? : Activate data from this date}
-                            {to-date? : Activate route data up until this date}';
+                            {from-date? : Activate data from this date.}
+                            {to-date? : Activate route data up until this date.}
+                            {import-id? : ID for import status update.}';
 
     /**
      * The console command description.
@@ -102,8 +103,13 @@ class ActivateRoutedata extends Command
             $stats['calls']
         ));
         if ($stats['errors']) {
-            $importStatus = new RouteImportStatus();
-            $importStatus->setError();
+            $importStatus = ImportStatus::find($this->argument('import-id'));
+            if ($importStatus) {
+                $importStatus->status = static::FAILURE;
+                $importStatus->save();
+            } else {
+                $this->error('Activation task completed with error(s)! Check log file for details.');
+            }
         }
         return static::SUCCESS;
     }

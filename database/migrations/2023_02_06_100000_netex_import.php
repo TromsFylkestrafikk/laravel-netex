@@ -14,13 +14,13 @@ class CreateNetexImportTable extends Migration
     public function up()
     {
         Schema::create('netex_import', function (Blueprint $table) {
-            $table->char('name', 45)->primary();
+            $table->char('name', 43)->primary();
             $table->bigInteger('size');
-            $table->char('md5', 45);
+            $table->char('md5', 32);
             $table->date('import_date')->nullable();
             $table->date('valid_to')->nullable();
-            $table->char('status', 45)->nullable();
-            $table->integer('version')->nullable();
+            $table->integer('status');
+            $table->integer('version');
         });
     }
 

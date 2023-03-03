@@ -52,8 +52,8 @@ class RouteValidator extends RouteBase
      */
     public function validateJourneys($date)
     {
-        $oldJourneys = parent::getOldJourneys($date);
-        $rawJourneys = parent::getRawJourneys($date);
+        $oldJourneys = self::getOldJourneys($date);
+        $rawJourneys = self::getRawJourneys($date);
         if ($rawJourneys->count() !== $oldJourneys->count()) {
             // Data size mismatch.
             return true;
@@ -62,7 +62,7 @@ class RouteValidator extends RouteBase
         foreach ($rawJourneys as $rawJourney) {
             $jRec = array_intersect_key((array) $rawJourney, $this->journeyFillable);
             $jRec['date'] = $date;
-            $jRec['id'] = parent::makeJourneyId($jRec);
+            $jRec['id'] = self::makeJourneyId($jRec);
 
             $mismatch = $this->validateJourneyCalls($jRec);
             if ($mismatch) {
@@ -94,13 +94,13 @@ class RouteValidator extends RouteBase
      */
     protected function validateJourneyCalls(array &$jRec)
     {
-        $oldCalls = parent::getOldCalls($jRec['id']);
-        $rawCalls = parent::getRawCalls($jRec['vehicle_journey_id']);
+        $oldCalls = self::getOldCalls($jRec['id']);
+        $rawCalls = self::getRawCalls($jRec['vehicle_journey_id']);
         $callStamp = new Carbon("{$jRec['date']} 04:00:00");
         $prevDestDisplay = $jRec['name'];
         foreach ($rawCalls as $rawCall) {
-            $callStamp = parent::expandCallTime($rawCall, 'arrival_time', $callStamp);
-            $callStamp = parent::expandCallTime($rawCall, 'departure_time', $callStamp);
+            $callStamp = self::expandCallTime($rawCall, 'arrival_time', $callStamp);
+            $callStamp = self::expandCallTime($rawCall, 'departure_time', $callStamp);
             if ($rawCall->destination_display) {
                 $prevDestDisplay = $rawCall->destination_display;
             } else {
@@ -108,7 +108,7 @@ class RouteValidator extends RouteBase
             }
             $rawCall->call_time = $rawCall->arrival_time ?: $rawCall->departure_time;
 
-            $callId = parent::makeCallId((array) $rawCall, $jRec['id']);
+            $callId = self::makeCallId((array) $rawCall, $jRec['id']);
             $callData = array_merge(
                 array_intersect_key((array) $rawCall, $this->callFillable),
                 [

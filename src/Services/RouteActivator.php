@@ -151,7 +151,7 @@ class RouteActivator extends RouteBase
                 // Reset internal overview of seen IDs
                 $this->callIds = [];
                 $this->aJourneyIds = [];
-                $rawJourneys = parent::getRawJourneys($dateStr);
+                $rawJourneys = self::getRawJourneys($dateStr);
                 $this->activateJourneys($dateStr, $rawJourneys);
                 $this->dayCount++;
                 // Interim flush to assert the full day is complete, and get the
@@ -290,7 +290,7 @@ class RouteActivator extends RouteBase
         foreach ($rawJourneys as $rawJourney) {
             $jRec = array_intersect_key((array) $rawJourney, $this->journeyFillable);
             $jRec['date'] = $date;
-            $jId = parent::makeJourneyId($jRec);
+            $jId = self::makeJourneyId($jRec);
             if (!empty($this->aJourneyIds[$jId])) {
                 Log::error(sprintf(
                     'NeTEx: Duplicate active journey ID detected: %s. Journey ID: %s (%s)',
@@ -311,12 +311,12 @@ class RouteActivator extends RouteBase
 
     protected function activateJourneyCalls(array &$jRec)
     {
-        $rawCalls = parent::getRawCalls($jRec['vehicle_journey_id']);
+        $rawCalls = self::getRawCalls($jRec['vehicle_journey_id']);
         $callStamp = new Carbon("{$jRec['date']} 04:00:00");
         $prevDestDisplay = $jRec['name'];
         foreach ($rawCalls as $rawCall) {
-            $callStamp = parent::expandCallTime($rawCall, 'arrival_time', $callStamp);
-            $callStamp = parent::expandCallTime($rawCall, 'departure_time', $callStamp);
+            $callStamp = self::expandCallTime($rawCall, 'arrival_time', $callStamp);
+            $callStamp = self::expandCallTime($rawCall, 'departure_time', $callStamp);
             if ($rawCall->destination_display) {
                 $prevDestDisplay = $rawCall->destination_display;
             } else {
@@ -341,7 +341,7 @@ class RouteActivator extends RouteBase
      */
     protected function activateCall(array $jRec, array $rawCall)
     {
-        $callId = parent::makeCallId($rawCall, $jRec['id']);
+        $callId = self::makeCallId($rawCall, $jRec['id']);
         if (!empty($this->callIds[$callId])) {
             Log::error(sprintf(
                 "NeTEx activation: Duplicate active call detected: %s on journey ID %s. Call time: %s (%s)",
@@ -357,7 +357,7 @@ class RouteActivator extends RouteBase
         $this->callDumper->addRecord(array_merge(
             array_intersect_key($rawCall, $this->callFillable),
             [
-                'id' => parent::makeCallId($rawCall, $jRec['id']),
+                'id' => self::makeCallId($rawCall, $jRec['id']),
                 'active_journey_id' => $jRec['id'],
                 'line_private_code' => $jRec['line_private_code'],
             ]
