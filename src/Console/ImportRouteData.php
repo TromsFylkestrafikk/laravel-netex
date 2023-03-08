@@ -2,12 +2,12 @@
 
 namespace TromsFylkestrafikk\Netex\Console;
 
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Console\Helper\ProgressBar;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexFileParser;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexDatabase;
-use TromsFylkestrafikk\Netex\Models\ImportStatus;
 use TromsFylkestrafikk\Netex\Services\StopsActivator;
 
 class ImportRouteData extends Command
@@ -19,8 +19,7 @@ class ImportRouteData extends Command
      */
     protected $signature = 'netex:importroutedata
                             {path : Folder containing XML files in NeTEx format.}
-                            {main : Filename of the main NeTEx file (XML).}
-                            {import-id? : ID for import status update.}';
+                            {main : Filename of the main NeTEx file (XML).}';
 
     /**
      * The console command description.
@@ -53,66 +52,60 @@ class ImportRouteData extends Command
      */
     public function handle(StopsActivator $stopsActivator)
     {
-        $this->info('Importing route data files...');
-        Log::info("NeTEx route data import starting...");
-        $importStatus = ImportStatus::find($this->argument('import-id'));
+        $msg = 'Importing NeTEx route data files...';
+        $this->info($msg);
+        Log::info("NeTEx: $msg");
 
-        // Check input parameters.
+        // Check files to be imported.
         $netexDir = rtrim($this->argument('path'), '/');
         $mainXmlFile = sprintf("%s/%s", $netexDir, $this->argument('main'));
         if (strlen($mainXmlFile) < 5) {
-            $this->error("Invalid input parameter(s) supplied to import module!");
-            Log::error("Invalid input parameter(s) supplied to import module!");
-            if ($importStatus) {
-                $importStatus->status = static::FAILURE;
-                $importStatus->save();
-            }
-            return self::FAILURE;
+            $msg = "Invalid input parameter(s) supplied to import module!";
+            $this->error($msg);
+            Log::error("NeTEx: $msg");
+            return Command::FAILURE;
         }
-        if (strpos($mainXmlFile, '.xml', -4) === false) {
-            $this->error("Unrecognized main file extension! Only XML is supported.");
-            Log::error("Unrecognized main file extension! Only XML is supported.");
-            if ($importStatus) {
-                $importStatus->status = static::FAILURE;
-                $importStatus->save();
-            }
-            return self::FAILURE;
+        if (pathinfo($mainXmlFile)['extension'] !== 'xml') {
+            $msg = "Unrecognized main file extension! Only XML is supported.";
+            $this->error($msg);
+            Log::error("NeTEx: $msg");
+            return Command::FAILURE;
         }
         if (!file_exists($mainXmlFile)) {
-            $this->error("Main NeTEx XML file ($mainXmlFile) was not found!");
-            Log::error("Main NeTEx XML file ($mainXmlFile) was not found!");
-            if ($importStatus) {
-                $importStatus->status = static::FAILURE;
-                $importStatus->save();
-            }
-            return self::FAILURE;
+            $msg = "Main NeTEx XML file ($mainXmlFile) was not found!";
+            $this->error($msg);
+            Log::error("NeTEx: $msg");
+            return Command::FAILURE;
         }
         $files = array_filter(
             glob($netexDir . '/*.xml', GLOB_NOSORT),
             fn ($path) => $path !== $mainXmlFile
         );
         if (count($files) <= 1) {
-            $this->error("No NeTEx line files (XML) found in $netexDir");
-            Log::error("No NeTEx line files (XML) found in $netexDir");
-            if ($importStatus) {
-                $importStatus->status = static::FAILURE;
-                $importStatus->save();
-            }
-            return self::FAILURE;
+            $msg = "No NeTEx line files (XML) found in $netexDir";
+            $this->error($msg);
+            Log::error("NeTEx: $msg");
+            return Command::FAILURE;
         }
 
-        $this->setupProgressBar();
-        $database = new NetexDatabase();
-        $parser = new NetexFileParser($mainXmlFile);
-        $this->processMainFile($database, $parser);
-        $this->processLineFiles($database, $parser, $files);
+        try {
+            $this->setupProgressBar();
+            $database = new NetexDatabase();
+            $parser = new NetexFileParser($mainXmlFile);
+            $this->processMainFile($database, $parser);
+            $this->processLineFiles($database, $parser, $files);
 
-        // Update 'active' stops, seen in this data set.
-        $this->info("Synchronizing active stops found in route set ...");
-        $stopsActivator->update();
-        $this->info("Synchronizing complete");
+            // Update 'active' stops, seen in this data set.
+            $this->info("Synchronizing active stops found in route set ...");
+            $stopsActivator->update();
+            $this->info("Synchronizing complete.");
+        } catch (Exception $e) {
+            $this->error(sprintf("Error: %s", $e->getMessage()));
+            Log::error(sprintf("NeTEx: %s", $e->getMessage()));
+            return Command::FAILURE;
+        }
         Log::info("NeTEx route data import ended.");
-        return self::SUCCESS;
+        return Command::SUCCESS;
     }
 
     protected function setupProgressBar()
