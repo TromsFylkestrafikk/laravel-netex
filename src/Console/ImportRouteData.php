@@ -10,6 +10,7 @@ use TromsFylkestrafikk\Netex\Console\NeTEx\NetexDatabase;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexFileParser;
 use TromsFylkestrafikk\Netex\Console\Traits\LogAndPrint;
 use TromsFylkestrafikk\Netex\Services\StopsActivator;
+use TromsFylkestrafikk\Netex\Services\RouteSet;
 
 class ImportRouteData extends Command
 {
@@ -21,8 +22,8 @@ class ImportRouteData extends Command
      * @var string
      */
     protected $signature = 'netex:importroutedata
-                            {path : Folder containing XML files in NeTEx format.}
-                            {main : Filename of the main NeTEx file (XML).}';
+                            {path : Path to route set directory, relative to netex disk root}
+                            {main : Filename of shared NeTEx XML data}';
 
     /**
      * The console command description.
@@ -37,6 +38,12 @@ class ImportRouteData extends Command
      * @var \Symfony\Component\Console\Helper\ProgressBar
      */
     protected $progressBar = null;
+
+    /**
+     * @var \TromsFylkestrafikk\Netex\Services\RouteSet
+     */
+    protected $routeSet;
+
 
     /**
      * Create a new command instance.
@@ -58,44 +65,19 @@ class ImportRouteData extends Command
         $this->lpInfo('Importing NeTEx route data files...');
 
         // Check files to be imported.
-        $netexDir = rtrim($this->argument('path'), '/');
-        $mainXmlFile = sprintf("%s/%s", $netexDir, $this->argument('main'));
-        if (strlen($mainXmlFile) < 5) {
-            $this->lpError("Invalid input parameter(s) supplied to import module!");
-            return Command::FAILURE;
-        }
-        if (pathinfo($mainXmlFile)['extension'] !== 'xml') {
-            $this->lpError("Unrecognized main file extension! Only XML is supported.");
-            return Command::FAILURE;
-        }
-        if (!file_exists($mainXmlFile)) {
-            $this->lpError("Main NeTEx XML file ($mainXmlFile) was not found!");
-            return Command::FAILURE;
-        }
-        $files = array_filter(
-            glob($netexDir . '/*.xml', GLOB_NOSORT),
-            fn ($path) => $path !== $mainXmlFile
-        );
-        if (count($files) <= 1) {
-            $this->lpError("No NeTEx line files (XML) found in $netexDir");
-            return Command::FAILURE;
-        }
+        $netexDir = trim($this->argument('path'), '/');
+        $mainXmlFile = $this->argument('main');
+        $this->routeSet = new RouteSet($netexDir, $mainXmlFile);
 
-        try {
-            $this->setupProgressBar();
-            $database = new NetexDatabase();
-            $parser = new NetexFileParser($mainXmlFile);
-            $this->processMainFile($database, $parser);
-            $this->processLineFiles($database, $parser, $files);
+        $this->setupProgressBar();
+        $database = new NetexDatabase();
+        $parser = new NetexFileParser($mainXmlFile);
+        $this->processFiles($database, $parser);
 
-            // Update 'active' stops, seen in this data set.
-            $this->info("Synchronizing active stops found in route set ...");
-            $stopsActivator->update();
-            $this->info("Synchronizing complete.");
-        } catch (Exception $e) {
-            $this->lpError(sprintf("Error: %s", $e->getMessage()));
-            return Command::FAILURE;
-        }
+        // Update 'active' stops, seen in this data set.
+        $this->info("Synchronizing active stops found in route set ...");
+        $stopsActivator->update();
+        $this->info("Synchronizing complete.");
         Log::info("NeTEx route data import ended.");
         return Command::SUCCESS;
     }
@@ -111,33 +93,27 @@ class ImportRouteData extends Command
         $this->progressBar->setProgressCharacter('▪');
     }
 
+    protected function processFiles(NetexDatabase $database, NetexFileParser $parser)
+    {
+        // Parse all line files.
+        $this->progressBar->setMaxSteps(count($this->routeSet->getFiles()));
+        $this->progressBar->setMessage('Processing NeTEx line data.');
+        $this->progressBar->start();
+    }
+
     protected function processMainFile(NetexDatabase $database, NetexFileParser $parser)
     {
-        $this->progressBar->setMaxSteps(9);
         $this->progressBar->start();
-        $this->progressBar->setMessage('Processing NeTEx main data.');
-        $parser->parseMainxmlFile();
-        $this->progressBar->advance();
+        $parser->parseMainXmlFile();
         $parser->generateCalendar();
-        $this->progressBar->advance();
-
         $database->writeCalendar($parser->calendar);
-        $this->progressBar->advance();
         $database->writeOperators($parser->operators);
-        $this->progressBar->advance();
         $database->writeGroupOfLines($parser->groupOfLines);
-        $this->progressBar->advance();
         $database->writeScheduledStopPoints($parser->scheduledStopPoints);
-        $this->progressBar->advance();
         $database->writeDestinationDisplays($parser->destinationDisplays);
-        $this->progressBar->advance();
         $database->writeStopAssignments($parser->stopAssignments);
-        $this->progressBar->advance();
         $database->writeServiceLinks($parser->serviceLinks);
-        $this->progressBar->advance();
         $database->writeVehicleSchedules($parser->vehicleSchedules);
-        $this->progressBar->finish();
-        $this->newLine();
 
         // Free up menory.
         unset($parser->calendar);
@@ -156,11 +132,6 @@ class ImportRouteData extends Command
 
     protected function processLineFiles(NetexDatabase $database, NetexFileParser $parser, $files)
     {
-        // Parse all line files.
-        $this->progressBar->setMaxSteps(count($files) + 1);
-        $this->progressBar->setMessage('Processing NeTEx line data.');
-        $this->progressBar->start();
-
         foreach ($files as $filePath) {
             $parser->parseLineXmlFile($filePath);
 
