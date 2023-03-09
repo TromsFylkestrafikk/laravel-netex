@@ -15,6 +15,7 @@ class NetexServiceProvider extends ServiceProvider
 {
     public function boot()
     {
+        $this->publishConfig();
         $this->setupMigrations();
         $this->setupConsoleCommands();
     }
@@ -22,6 +23,15 @@ class NetexServiceProvider extends ServiceProvider
     public function register()
     {
         $this->bindServices();
+    }
+
+    protected function publishConfig()
+    {
+        if ($this->app->runningInConsole()) {
+            $this->publishes([
+                __DIR__ . '/../config/netex.php' => config_path('netex.php'),
+            ], ['netex', 'config', 'netex-config']);
+        }
     }
 
     /**
