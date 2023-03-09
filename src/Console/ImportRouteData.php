@@ -6,12 +6,15 @@ use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Console\Helper\ProgressBar;
-use TromsFylkestrafikk\Netex\Console\NeTEx\NetexFileParser;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexDatabase;
+use TromsFylkestrafikk\Netex\Console\NeTEx\NetexFileParser;
+use TromsFylkestrafikk\Netex\Console\Traits\LogAndPrint;
 use TromsFylkestrafikk\Netex\Services\StopsActivator;
 
 class ImportRouteData extends Command
 {
+    use LogAndPrint;
+
     /**
      * The name and signature of the console command.
      *
@@ -52,29 +55,21 @@ class ImportRouteData extends Command
      */
     public function handle(StopsActivator $stopsActivator)
     {
-        $msg = 'Importing NeTEx route data files...';
-        $this->info($msg);
-        Log::info("NeTEx: $msg");
+        $this->lpInfo('Importing NeTEx route data files...');
 
         // Check files to be imported.
         $netexDir = rtrim($this->argument('path'), '/');
         $mainXmlFile = sprintf("%s/%s", $netexDir, $this->argument('main'));
         if (strlen($mainXmlFile) < 5) {
-            $msg = "Invalid input parameter(s) supplied to import module!";
-            $this->error($msg);
-            Log::error("NeTEx: $msg");
+            $this->lpError("Invalid input parameter(s) supplied to import module!");
             return Command::FAILURE;
         }
         if (pathinfo($mainXmlFile)['extension'] !== 'xml') {
-            $msg = "Unrecognized main file extension! Only XML is supported.";
-            $this->error($msg);
-            Log::error("NeTEx: $msg");
+            $this->lpError("Unrecognized main file extension! Only XML is supported.");
             return Command::FAILURE;
         }
         if (!file_exists($mainXmlFile)) {
-            $msg = "Main NeTEx XML file ($mainXmlFile) was not found!";
-            $this->error($msg);
-            Log::error("NeTEx: $msg");
+            $this->lpError("Main NeTEx XML file ($mainXmlFile) was not found!");
             return Command::FAILURE;
         }
         $files = array_filter(
@@ -82,9 +77,7 @@ class ImportRouteData extends Command
             fn ($path) => $path !== $mainXmlFile
         );
         if (count($files) <= 1) {
-            $msg = "No NeTEx line files (XML) found in $netexDir";
-            $this->error($msg);
-            Log::error("NeTEx: $msg");
+            $this->lpError("No NeTEx line files (XML) found in $netexDir");
             return Command::FAILURE;
         }
 
@@ -100,8 +93,7 @@ class ImportRouteData extends Command
             $stopsActivator->update();
             $this->info("Synchronizing complete.");
         } catch (Exception $e) {
-            $this->error(sprintf("Error: %s", $e->getMessage()));
-            Log::error(sprintf("NeTEx: %s", $e->getMessage()));
+            $this->lpError(sprintf("Error: %s", $e->getMessage()));
             return Command::FAILURE;
         }
         Log::info("NeTEx route data import ended.");

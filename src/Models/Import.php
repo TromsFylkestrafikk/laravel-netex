@@ -13,12 +13,12 @@ class Import extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'name',
-        'size',
+        'id',
+        'path',
         'md5',
-        'import_date',
-        'valid_to',
-        'status',
+        'available_from',
+        'available_to',
+        'import_status',
         'message',
     ];
 }
