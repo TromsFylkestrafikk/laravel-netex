@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\Console\Helper\ProgressBar;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexFileParser;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexDatabase;
+use TromsFylkestrafikk\Netex\Models\Import;
 use TromsFylkestrafikk\Netex\Services\StopsActivator;
 
 class ImportRouteData extends Command
@@ -89,6 +90,29 @@ class ImportRouteData extends Command
         }
 
         try {
+            $md5 = null;
+            $size = 0;
+            $count = $this->scanFolder($netexDir, $size, $md5);
+            $prevImport = Import::latest('id')->first();
+            $importInfo = Import::create([
+                'id' => date('Ymd-His'),
+                'md5' => $md5,
+                'size' => $size,
+                'files' => $count,
+                'date' => date('Y-m-d'),
+                'valid_to' => $prevImport?->valid_to,
+                'activated' => $prevImport?->activated,
+                'status' => static::FAILURE,
+            ]);
+            if (($prevImport?->status === static::SUCCESS) && ($prevImport->md5 === $md5)) {
+                $msg = 'File import skipped due to unchanged file content.';
+                $this->warn($msg);
+                Log::warning("NeTEx: $msg");
+                $importInfo->status = static::SUCCESS;
+                $importInfo->save();
+                return Command::SUCCESS;
+            }
+
             $this->setupProgressBar();
             $database = new NetexDatabase();
             $parser = new NetexFileParser($mainXmlFile);
@@ -99,6 +123,11 @@ class ImportRouteData extends Command
             $this->info("Synchronizing active stops found in route set ...");
             $stopsActivator->update();
             $this->info("Synchronizing complete.");
+
+            // Update job status. Activation will be required afterwards.
+            $importInfo->status = static::SUCCESS;
+            $importInfo->activated = false;
+            $importInfo->save();
         } catch (Exception $e) {
             $this->error(sprintf("Error: %s", $e->getMessage()));
             Log::error(sprintf("NeTEx: %s", $e->getMessage()));
@@ -182,5 +211,15 @@ class ImportRouteData extends Command
         $database->writeLines($parser->lines);
         $this->progressBar->finish();
         $this->newLine();
+    }
+
+    protected function scanFolder($path, &$size, &$md5)
+    {
+        $md5List = array_map(function ($name) use (&$size) {
+            $size += filesize($name);
+            return md5_file($name);
+        }, glob($path . '/*.xml'));
+        $md5 = md5(implode('', $md5List));
+        return count($md5List);
     }
 }

@@ -4,6 +4,8 @@ namespace TromsFylkestrafikk\Netex\Console;
 
 use Exception;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
+use TromsFylkestrafikk\Netex\Models\Import;
 use TromsFylkestrafikk\Netex\Services\RouteActivator;
 use TromsFylkestrafikk\Netex\Console\Traits\ActivateProgress;
 
@@ -61,6 +63,20 @@ class ActivateRoutedata extends Command
                 $this->activator->getFromDate(),
                 $this->activator->getToDate()
             ));
+            $importInfo = Import::latest('id')->first();
+            if ($importInfo?->status !== static::SUCCESS) {
+                $msg = sprintf("Activation aborted due to %s", $importInfo ? 'failed import!' : 'absent import info.');
+                $this->error($msg);
+                Log::error("NeTEx: $msg");
+                return Command::FAILURE;
+            }
+            if ($importInfo->activated && $this->checkActivationPeriod($importInfo)) {
+                $msg = 'Activation skipped. Already activated.';
+                $this->warn($msg);
+                Log::warning("NeTEx: $msg");
+                return Command::SUCCESS;
+            }
+
             $this->info("Step 1: Validate");
             $this->setupProgressBar();
             $this->activator
@@ -95,7 +111,15 @@ class ActivateRoutedata extends Command
                 })
                 ->activate();
             $this->progressBar->finish();
+
             $stats = $this->activator->summary();
+            $importInfo->days = $stats['days'];
+            $importInfo->calls = $stats['calls'];
+            $importInfo->journeys = $stats['journeys'];
+            $importInfo->valid_to = $this->activator->getToDate();
+            $importInfo->activated = true;
+            $importInfo->save();
+
             $this->info(sprintf(
                 "Activation complete. %d days, %d journeys, %d calls",
                 $stats['days'],
@@ -111,5 +135,31 @@ class ActivateRoutedata extends Command
             return Command::FAILURE;
         }
         return Command::SUCCESS;
+    }
+
+    /**
+     * Check new activation period against the old one.
+     *
+     * @param Import|null $import
+     *
+     * @return bool
+     */
+    protected function checkActivationPeriod(Import $import = null)
+    {
+        if ($import?->status === static::SUCCESS) {
+            $newStartDate = $this->activator->getFromDate();
+            $newEndDate = $this->activator->getToDate();
+            $oldStartDate = $import->date;
+            $oldEndDate = $import->valid_to;
+            if (($oldStartDate === null) || ($oldEndDate === null)) {
+                // Previous activation period is absent/invalid.
+                return false;
+            }
+            if (($oldStartDate <= $newStartDate) && ($newEndDate <= $oldEndDate)) {
+                // New activation period is within the old one.
+                return true;
+            }
+        }
+        return false;
     }
 }
