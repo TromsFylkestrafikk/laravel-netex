@@ -77,9 +77,8 @@ class ImportRouteData extends Command
         // Update 'active' stops, seen in this data set.
         $this->info("Synchronizing active stops found in route set ...");
         $stopsActivator->update();
-        $this->info("Synchronizing complete.");
-        Log::info("NeTEx route data import ended.");
-        return Command::SUCCESS;
+        $this->lpInfo("Route data import complete");
+        return self::SUCCESS;
     }
 
     protected function setupProgressBar()
@@ -96,9 +95,27 @@ class ImportRouteData extends Command
     protected function processFiles(NetexDatabase $database, NetexFileParser $parser)
     {
         // Parse all line files.
-        $this->progressBar->setMaxSteps(count($this->routeSet->getFiles()));
-        $this->progressBar->setMessage('Processing NeTEx line data.');
+        $files = $this->routeSet->getFiles();
+        $this->progressBar->setMaxSteps(count($files));
         $this->progressBar->start();
+
+        foreach ($files as $filePath) {
+            $filename = basename($filePath);
+            $this->progressBar->setMessage("Processing $filename");
+            $this->progressBar->advance();
+            if ($filename === $this->routeSet->getSharedFile()) {
+                $this->processMainFile($database, $parser);
+            } else {
+                $parser->parseLineXmlFile($filePath);
+                // Update database with data from NeTEx line file.
+                $database->writeRoutes($parser->routes);
+                $database->writeJourneyPatterns($parser->journeyPatterns);
+                $database->writeVehicleJourneys($parser->vehicleJourneys);
+            }
+        }
+        $database->writeLines($parser->lines);
+        $this->progressBar->finish();
+        $this->newLine();
     }
 
     protected function processMainFile(NetexDatabase $database, NetexFileParser $parser)
@@ -128,22 +145,5 @@ class ImportRouteData extends Command
         unset($parser->destinationDisplays);
         unset($parser->serviceLinks);
         unset($parser->vehicleSchedules);
-    }
-
-    protected function processLineFiles(NetexDatabase $database, NetexFileParser $parser, $files)
-    {
-        foreach ($files as $filePath) {
-            $parser->parseLineXmlFile($filePath);
-
-            // Update database with data from NeTEx line file.
-            $database->writeRoutes($parser->routes);
-            $database->writeJourneyPatterns($parser->journeyPatterns);
-            $database->writeVehicleJourneys($parser->vehicleJourneys);
-            $this->progressBar->advance();
-        }
-
-        $database->writeLines($parser->lines);
-        $this->progressBar->finish();
-        $this->newLine();
     }
 }

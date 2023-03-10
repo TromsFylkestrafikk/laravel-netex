@@ -106,6 +106,14 @@ class RouteSet
     }
 
     /**
+     * @return string
+     */
+    public function getSharedFile(): string
+    {
+        return $this->sharedFile;
+    }
+
+    /**
      * Get list of XML files in Route set with full file system path.
      *
      * @return string[]
