@@ -19,7 +19,7 @@ return new class extends Migration
             $table->char('md5')->nullable()->comment('MD5 sum of entire set');
             $table->date('available_from')->nullable()->comment('Route set vailability from date');
             $table->date('available_to')->nullable()->comment('Route set availability to date');
-            $table->enum('import_status', ['init', 'loading', 'error', 'imported'])->default('init')->comment('Status of this import');
+            $table->enum('import_status', ['new', 'importing', 'imported', 'error'])->default('new')->comment('Status of this import');
             $table->string('message')->nullable()->comment('Message of what failed during import');
             $table->timestamps();
         });

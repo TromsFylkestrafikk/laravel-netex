@@ -3,7 +3,8 @@
 namespace TromsFylkestrafikk\Netex\Services;
 
 use Exception;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use TromsFylkestrafikk\Netex\Models\Import;
 
 /**
  * Tools related to a full NeTEx route set in XML.
@@ -68,6 +69,23 @@ class RouteSet
     }
 
     /**
+     * True if this set differ from existing, latest import.
+     *
+     * @return bool
+     */
+    public function isModified(): bool
+    {
+        $lastImport = Import::latest()->first();
+        if (!$lastImport) {
+            return true;
+        }
+        if ($lastImport->import_status !== 'imported') {
+            return true;
+        }
+        return $lastImport->md5 !== $this->getMd5();
+    }
+
+    /**
      * Generate md5 of route set.
      *
      * @return string
@@ -113,6 +131,11 @@ class RouteSet
     public function getSharedFile(): string
     {
         return $this->sharedFile;
+    }
+
+    public function getSharedFilePath(): string
+    {
+        return $this->getFilePath($this->sharedFile);
     }
 
     /**
