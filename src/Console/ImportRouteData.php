@@ -109,6 +109,7 @@ class ImportRouteData extends Command
             'import_status' => 'importing',
             'message' => 'Importing core netex data.',
         ]);
+
         try {
             $this->processFiles();
             $this->finalizeImport();
@@ -117,6 +118,7 @@ class ImportRouteData extends Command
             $this->import->fill(['import_status' => 'error', 'message' => $except->getMessage()])->save();
             throw $except;
         }
+
         $this->import->fill(['import_status' => 'imported', 'message' => null])->save();
         $this->lpInfo("Route data import complete");
         return self::SUCCESS;

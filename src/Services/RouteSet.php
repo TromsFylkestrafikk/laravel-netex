@@ -133,6 +133,11 @@ class RouteSet
         return $this->sharedFile;
     }
 
+    /**
+     * Get full path to shared XML file in set.
+     *
+     * @return string
+     */
     public function getSharedFilePath(): string
     {
         return $this->getFilePath($this->sharedFile);
