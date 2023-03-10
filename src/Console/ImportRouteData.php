@@ -71,7 +71,7 @@ class ImportRouteData extends Command
 
         $this->setupProgressBar();
         $database = new NetexDatabase();
-        $parser = new NetexFileParser($mainXmlFile);
+        $parser = new NetexFileParser($this->routeSet->getFilePath($mainXmlFile));
         $this->processFiles($database, $parser);
 
         // Update 'active' stops, seen in this data set.
@@ -84,7 +84,7 @@ class ImportRouteData extends Command
     protected function setupProgressBar()
     {
         // Progress bar setup. Initial settings used for "Parse main file".
-        ProgressBar::setFormatDefinition('custom', ' %bar%  %elapsed% - %message%');
+        ProgressBar::setFormatDefinition('custom', '%percent%% [%bar%]  %elapsed% - %message%');
         $this->progressBar = new ProgressBar($this->output);
         $this->progressBar->setFormat('custom');
         $this->progressBar->setBarCharacter('■');
@@ -120,7 +120,6 @@ class ImportRouteData extends Command
 
     protected function processMainFile(NetexDatabase $database, NetexFileParser $parser)
     {
-        $this->progressBar->start();
         $parser->parseMainXmlFile();
         $parser->generateCalendar();
         $database->writeCalendar($parser->calendar);
