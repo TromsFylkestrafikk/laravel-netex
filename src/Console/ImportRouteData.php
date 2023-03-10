@@ -71,6 +71,7 @@ class ImportRouteData extends Command
         $netexDir = trim($this->argument('path'), '/');
         $mainXmlFile = $this->argument('main');
         $this->routeSet = new RouteSet($netexDir, $mainXmlFile);
+
         $this->import = Import::create([
             'path' => $netexDir,
             'md5' => $this->routeSet->getMd5(),
