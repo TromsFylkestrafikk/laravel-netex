@@ -4,6 +4,7 @@ namespace TromsFylkestrafikk\Netex\Console;
 
 use Exception;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Symfony\Component\Console\Helper\ProgressBar;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexDatabase;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexFileParser;
@@ -52,9 +53,26 @@ class ImportRouteData extends Command
     protected $import;
 
     /**
+     * @var \TromsFylkestrafikk\Netex\Console\NeTEx\NetexFileParser
+     */
+    protected $parser;
+
+    /**
      * @var \TromsFylkestrafikk\Netex\Services\StopsActivator
      */
     protected $stopsActivator;
+
+    /**
+     * Number of line XML files processed.
+     *
+     * @var integer
+     */
+    protected $linesProcessed = 0;
+
+    /**
+     * @var bool
+     */
+    protected $sharedIsProcessed = false;
 
     /**
      * Create a new command instance.
@@ -93,6 +111,7 @@ class ImportRouteData extends Command
         ]);
         try {
             $this->processFiles();
+            $this->finalizeImport();
             $this->maybeSyncStops();
         } catch (Exception $except) {
             $this->import->fill(['import_status' => 'error', 'message' => $except->getMessage()])->save();
@@ -122,7 +141,7 @@ class ImportRouteData extends Command
     protected function processFiles(): void
     {
         $database = new NetexDatabase();
-        $parser = new NetexFileParser($this->routeSet->getSharedFilePath());
+        $this->parser = new NetexFileParser($this->routeSet->getSharedFilePath());
 
         // Parse all XML files in route set.
         $files = $this->routeSet->getFiles();
@@ -134,46 +153,37 @@ class ImportRouteData extends Command
             $this->progressBar->setMessage("Processing $filename");
             $this->progressBar->advance();
             if ($filename === $this->routeSet->getSharedFile()) {
-                $this->processMainFile($database, $parser);
+                $this->processSharedFile($database);
+                $this->sharedIsProcessed = true;
             } else {
-                $parser->parseLineXmlFile($filePath);
+                $this->linesProcessed++;
+                $this->parser->parseLineXmlFile($filePath);
                 // Update database with data from NeTEx line file.
-                $database->writeRoutes($parser->routes);
-                $database->writeJourneyPatterns($parser->journeyPatterns);
-                $database->writeVehicleJourneys($parser->vehicleJourneys);
+                $database->writeRoutes($this->parser->routes);
+                $database->writeJourneyPatterns($this->parser->journeyPatterns);
+                $database->writeVehicleJourneys($this->parser->vehicleJourneys);
             }
         }
-        $database->writeLines($parser->lines);
+        $database->writeLines($this->parser->lines);
         $this->progressBar->finish();
         $this->newLine();
     }
 
-    protected function processMainFile(NetexDatabase $database, NetexFileParser $parser)
+    protected function processSharedFile(NetexDatabase $database)
     {
-        $parser->parseMainXmlFile();
-        $parser->generateCalendar();
-        $database->writeCalendar($parser->calendar);
-        $database->writeOperators($parser->operators);
-        $database->writeGroupOfLines($parser->groupOfLines);
-        $database->writeScheduledStopPoints($parser->scheduledStopPoints);
-        $database->writeDestinationDisplays($parser->destinationDisplays);
-        $database->writeStopAssignments($parser->stopAssignments);
-        $database->writeServiceLinks($parser->serviceLinks);
-        $database->writeVehicleSchedules($parser->vehicleSchedules);
+        $this->parser->parseMainXmlFile();
+        $this->parser->generateCalendar();
+        $database->writeCalendar($this->parser->calendar);
+        $database->writeOperators($this->parser->operators);
+        $database->writeGroupOfLines($this->parser->groupOfLines);
+        $database->writeScheduledStopPoints($this->parser->scheduledStopPoints);
+        $database->writeDestinationDisplays($this->parser->destinationDisplays);
+        $database->writeStopAssignments($this->parser->stopAssignments);
+        $database->writeServiceLinks($this->parser->serviceLinks);
+        $database->writeVehicleSchedules($this->parser->vehicleSchedules);
 
         // Free up menory.
-        unset($parser->calendar);
-        unset($parser->operatingPeriods);
-        unset($parser->dayTypeAssignments);
-        unset($parser->dayTypes);
-        unset($parser->operators);
-        unset($parser->groupOfLines);
-        unset($parser->routePoints);
-        unset($parser->scheduledStopPoints);
-        unset($parser->stopAssignments);
-        unset($parser->destinationDisplays);
-        unset($parser->serviceLinks);
-        unset($parser->vehicleSchedules);
+        $this->parser->reset();
     }
 
     /**
@@ -188,5 +198,15 @@ class ImportRouteData extends Command
             $this->import->save();
             $this->stopsActivator->update();
         }
+    }
+
+    protected function finalizeImport()
+    {
+        if (!$this->linesProcessed || !$this->parser->availableFrom || !$this->parser->availableTo) {
+            throw new Exception('Imported route set is missing critical data.');
+        }
+        $this->import->available_from = new Carbon($this->parser->availableFrom);
+        $this->import->available_to =  new Carbon($this->parser->availableTo);
+        $this->import->save();
     }
 }
