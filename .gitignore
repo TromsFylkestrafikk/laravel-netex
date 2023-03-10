@@ -3,14 +3,24 @@
 /vendor/
 /node_modules
 
-# Code indexing and editor tools
+# Private customization and configurations
 .ac-php-conf.json
-.tern-port
+.php_cs.cache
+.phpactor.json
+
+# Auto-generated files
+npm-debug.log
 GPATH
 GRTAGS
 GTAGS
-.php_cs.cache
-
-# Auto-generated files
-.log/
+/.phpunit.cache
+/.fleet
+/.idea
+/.vscode
+/.log
+/_ide_helper.php
+/storage/*.key
+.eslintcache
+.phpunit.result.cache
 npm-debug.log
+yarn-error.log

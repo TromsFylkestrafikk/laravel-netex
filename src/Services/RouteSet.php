@@ -101,7 +101,7 @@ class RouteSet
      */
     public function getFullPath()
     {
-        $root = config(sprintf("filesystems.%s.root", config('netex.disk')));
+        $root = config(sprintf("filesystems.disks.%s.root", config('netex.disk')));
         return "$root/{$this->path}";
     }
 
