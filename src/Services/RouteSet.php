@@ -87,6 +87,8 @@ class RouteSet
     }
 
     /**
+     * Get path to route set, relative to netex disk.
+     *
      * @return string
      */
     public function getPath(): string
@@ -99,7 +101,7 @@ class RouteSet
      *
      * @return string
      */
-    public function getFullPath()
+    public function getFullPath(): string
     {
         $root = config(sprintf("filesystems.disks.%s.root", config('netex.disk')));
         return "$root/{$this->path}";
@@ -133,7 +135,7 @@ class RouteSet
      * @param string $fileName
      * @return string
      */
-    public function getFilePath($fileName)
+    public function getFilePath($fileName): string
     {
         return sprintf("%s/%s", $this->getFullPath(), $fileName);
     }

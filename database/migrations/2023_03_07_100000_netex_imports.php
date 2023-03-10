@@ -14,7 +14,7 @@ return new class extends Migration
     public function up()
     {
         Schema::create('netex_imports', function (Blueprint $table) {
-            $table->char('id')->primary()->comment('Unique identifier for set.');
+            $table->id()->comment('Incremental import ID.');
             $table->char('path')->comment('Path to raw XML set relative to netex disk.');
             $table->char('md5')->nullable()->comment('MD5 sum of entire set');
             $table->date('available_from')->nullable()->comment('Route set vailability from date');

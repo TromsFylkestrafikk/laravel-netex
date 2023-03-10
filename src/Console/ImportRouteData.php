@@ -2,13 +2,12 @@
 
 namespace TromsFylkestrafikk\Netex\Console;
 
-use Exception;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\Console\Helper\ProgressBar;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexDatabase;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexFileParser;
 use TromsFylkestrafikk\Netex\Console\Traits\LogAndPrint;
+use TromsFylkestrafikk\Netex\Models\Import;
 use TromsFylkestrafikk\Netex\Services\StopsActivator;
 use TromsFylkestrafikk\Netex\Services\RouteSet;
 
@@ -21,7 +20,7 @@ class ImportRouteData extends Command
      *
      * @var string
      */
-    protected $signature = 'netex:importroutedata
+    protected $signature = 'netex:import-routedata
                             {path : Path to route set directory, relative to netex disk root}
                             {main : Filename of shared NeTEx XML data}';
 
@@ -44,6 +43,10 @@ class ImportRouteData extends Command
      */
     protected $routeSet;
 
+    /**
+     * @var \TromsFylkestrafikk\Netex\Models\Import;
+     */
+    protected $import;
 
     /**
      * Create a new command instance.
@@ -68,7 +71,10 @@ class ImportRouteData extends Command
         $netexDir = trim($this->argument('path'), '/');
         $mainXmlFile = $this->argument('main');
         $this->routeSet = new RouteSet($netexDir, $mainXmlFile);
-
+        $this->import = Import::create([
+            'path' => $netexDir,
+            'md5' => $this->routeSet->getMd5(),
+        ]);
         $this->setupProgressBar();
         $database = new NetexDatabase();
         $parser = new NetexFileParser($this->routeSet->getFilePath($mainXmlFile));
@@ -81,7 +87,7 @@ class ImportRouteData extends Command
         return self::SUCCESS;
     }
 
-    protected function setupProgressBar()
+    protected function setupProgressBar(): void
     {
         // Progress bar setup. Initial settings used for "Parse main file".
         ProgressBar::setFormatDefinition('custom', '%percent%% [%bar%]  %elapsed% - %message%');
@@ -92,7 +98,7 @@ class ImportRouteData extends Command
         $this->progressBar->setProgressCharacter('▪');
     }
 
-    protected function processFiles(NetexDatabase $database, NetexFileParser $parser)
+    protected function processFiles(NetexDatabase $database, NetexFileParser $parser): void
     {
         // Parse all line files.
         $files = $this->routeSet->getFiles();

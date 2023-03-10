@@ -7,15 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * TromsFylkestrafikk\Netex\Models\Import
  *
- * @property string $id Unique identifier for set.
+ * @property int $id Incremental import ID.
  * @property string $path Path to raw XML set relative to netex disk.
  * @property string|null $md5 MD5 sum of entire set
  * @property string|null $available_from Route set vailability from date
  * @property string|null $available_to Route set availability to date
  * @property string $import_status Status of this import
  * @property string|null $message Message of what failed during import
- * @property string|null $created_at
- * @property string|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder|Import newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|Import newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|Import query()
@@ -32,13 +32,9 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Import extends Model
 {
-    public $incrementing = false;
-    public $timestamps = false;
     protected $table = 'netex_imports';
-    protected $keyType = 'string';
 
     protected $fillable = [
-        'id',
         'path',
         'md5',
         'available_from',
