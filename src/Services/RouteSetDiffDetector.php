@@ -3,22 +3,21 @@
 namespace TromsFylkestrafikk\Netex\Services;
 
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use TromsFylkestrafikk\Netex\Services\RouteBase;
 
-class RouteValidator extends RouteBase
+/**
+ * Detect difference between core NeTEx data and activated data.
+ */
+class RouteSetDiffDetector extends RouteBase
 {
     /**
-     * Callback function with $date parameter for matching content event.
-     */
-    public $onMatchingContentCallback;
-
-    /**
-     * Validate journeys on a given date.
+     * Returns true if imported route set differ from activated data.
      *
-     * @param string $date
+     * @param string $date Date to compare route data against.
      */
-    public function validateJourneys($date): bool
+    public function differ($date): bool
     {
         $oldJourneys = self::getOldJourneys($date);
         $rawJourneys = self::getRawJourneys($date);
@@ -33,7 +32,7 @@ class RouteValidator extends RouteBase
             $journeyId = self::makeJourneyId($jRec);
             $jRec['id'] = $journeyId;
 
-            $mismatch = $this->validateJourneyCalls($jRec);
+            $mismatch = $this->compareJourneyCalls($jRec);
             if ($mismatch) {
                 return true;
             }
@@ -55,11 +54,11 @@ class RouteValidator extends RouteBase
     }
 
     /**
-     * Validate calls on a given journey.
+     * Compare calls on a given journey.
      *
-     * @param array &$jRec
+     * @param array $jRec
      */
-    protected function validateJourneyCalls(array &$jRec): bool
+    protected function compareJourneyCalls(array &$jRec): bool
     {
         $oldCalls = self::getOldCalls($jRec['id']);
         $rawCalls = self::getRawCalls($jRec['vehicle_journey_id']);
@@ -127,7 +126,7 @@ class RouteValidator extends RouteBase
      *
      * @return \Illuminate\Support\Collection
      */
-    protected static function getOldCalls($id)
+    protected static function getOldCalls($id): Collection
     {
         return DB::table('netex_active_calls')->where('active_journey_id', $id)->get()->keyBy('id');
     }

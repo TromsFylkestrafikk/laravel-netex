@@ -8,7 +8,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use TromsFylkestrafikk\Netex\Services\RouteBase;
-use TromsFylkestrafikk\Netex\Services\RouteValidator;
 
 class RouteActivator extends RouteBase
 {
@@ -23,48 +22,43 @@ class RouteActivator extends RouteBase
     protected $toDate;
 
     /**
-     * Activation/Deactivation should respect validated dates.
+     * Whether to ignore detection of unmodified active data.
      *
      * @var bool
      */
     protected $forceActivation = false;
 
     /**
-     * @var string[]
+     * @var \TromsFylkestrafikk\Netex\Services\DbBulkInsert
      */
-    protected $activationDates = [];
+    protected $journeyDumper = null;
 
     /**
      * @var \TromsFylkestrafikk\Netex\Services\DbBulkInsert
      */
-    protected $journeyDumper;
+    protected $callDumper = null;
 
     /**
-     * @var \TromsFylkestrafikk\Netex\Services\DbBulkInsert
+     * @var \TromsFylkestrafikk\Netex\Services\RouteSetDiffDetector
      */
-    protected $callDumper;
-
-    /**
-     * @var \TromsFylkestrafikk\Netex\Services\RouteValidator
-     */
-    protected $validator;
+    protected $diffDetector = null;
 
     /**
      * Number of days processed.
      *
      * @var int
      */
-    protected $dayCount;
+    protected $dayCount = 0;
 
     /**
      * @var \Closure|null
      */
-    protected $dayCallback;
+    protected $dayCallback = null;
 
     /**
      * @var \Closure|null
      */
-    protected $journeyCallback;
+    protected $journeyCallback = null;
 
     /**
      * Keep track of seen call IDs to detect duplicates.
@@ -105,15 +99,14 @@ class RouteActivator extends RouteBase
             ->first();
         $this->fromDate = $fromDate ? max($fromDate, $dates->fromDate) : $dates->fromDate;
         $this->toDate = $toDate ? min($toDate, $dates->toDate) : $dates->toDate;
-        $this->validator = new RouteValidator();
     }
 
     /**
-     * Don't check for existing, equal records, just re-activate.
+     * Force re-activation of existing active data.
      *
      * @return $this
      */
-    public function noValidate(): self
+    public function force(): self
     {
         $this->forceActivation = true;
         return $this;
@@ -146,31 +139,10 @@ class RouteActivator extends RouteBase
         $toDate = new Carbon($this->toDate);
 
         Log::info(sprintf("NeTEx: Activating route data between %s and %s", $this->fromDate, $this->toDate));
-        $this->journeyDumper = new DbBulkInsert('netex_active_journeys', 'insertOrIgnore');
-        $this->callDumper = new DbBulkInsert('netex_active_calls', 'insertOrIgnore');
+        $this->assertServices();
         $this->dayCount = 0;
-
-        $prevJourneyCount = 0;
-        $prevCallCount = 0;
         while ($date <= $toDate) {
-            $dateStr = $date->format('Y-m-d');
-            $result = 'unmodified';
-            if ($this->forceActivation || $this->validateDay($dateStr)) {
-                $this->deactivateDate($dateStr)->activateDate($dateStr);
-                Log::debug(sprintf(
-                    "NeTEx: %s: %d journeys and %d calls",
-                    $dateStr,
-                    $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
-                    $this->callDumper->getRecordsWritten() - $prevCallCount,
-                ));
-                $result = 'activated';
-            } else {
-                Log::debug(sprintf("NeTEx: %s: Not modified", $dateStr));
-            }
-            $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
-            $prevCallCount = $this->callDumper->getRecordsWritten();
-            $this->dayCount++;
-            $this->invoke($this->dayCallback, $dateStr, $result);
+            $this->activateDate($date->format('Y-m-d'));
             $date->addDay();
         }
         Log::info(sprintf(
@@ -197,7 +169,7 @@ class RouteActivator extends RouteBase
         Log::info(sprintf("NeTEx: Deactivating route data between %s and %s", $this->fromDate, $this->toDate));
         while ($date <= $toDate) {
             $dateStr = $date->format('Y-m-d');
-            $this->deactivateDate($dateStr);
+            $this->destroyActiveDate($dateStr);
             $this->dayCount++;
             $this->invoke($this->dayCallback, $dateStr, 'deactivated');
             $date->addDay();
@@ -233,6 +205,37 @@ class RouteActivator extends RouteBase
     }
 
     /**
+     * Activate a single day.
+     *
+     * @param string $date
+     * @return $this
+     */
+    public function activateDate($date): self
+    {
+        $this->assertServices();
+        $prevJourneyCount = 0;
+        $prevCallCount = 0;
+        $result = 'unmodified';
+        if ($this->forceActivation || $this->dateDiffer($date)) {
+            $this->destroyActiveDate($date)->buildActiveDate($date);
+            Log::debug(sprintf(
+                "NeTEx: %s: %d journeys and %d calls",
+                $date,
+                $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
+                $this->callDumper->getRecordsWritten() - $prevCallCount,
+            ));
+            $result = 'activated';
+        } else {
+            Log::debug(sprintf("NeTEx: %s: Not modified", $date));
+        }
+        $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
+        $prevCallCount = $this->callDumper->getRecordsWritten();
+        $this->dayCount++;
+        $this->invoke($this->dayCallback, $date, $result);
+        return $this;
+    }
+
+    /**
      * Get a summary of processed items.
      *
      * @return int[]
@@ -248,10 +251,28 @@ class RouteActivator extends RouteBase
     }
 
     /**
+     * Assert services used for activation is fit for fight.
+     *
+     * @return $this
+     */
+    protected function assertServices(): self
+    {
+        if ($this->journeyDumper !== null) {
+            return $this;
+        }
+        $this->journeyDumper = new DbBulkInsert('netex_active_journeys', 'insertOrIgnore');
+        $this->callDumper = new DbBulkInsert('netex_active_calls', 'insertOrIgnore');
+        $this->diffDetector = new RouteSetDiffDetector();
+        return $this;
+    }
+
+    /**
+     * Build the active route data for a given date.
+     *
      * @param string $date
      * @return $this
      */
-    protected function activateDate($date): self
+    protected function buildActiveDate($date): self
     {
         // Reset internal overview of seen IDs
         $this->callIds = [];
@@ -267,7 +288,7 @@ class RouteActivator extends RouteBase
      * @param string $date
      * @return $this
      */
-    protected function deactivateDate($date): self
+    protected function destroyActiveDate($date): self
     {
         DB::table('netex_active_calls', 'call')
             ->join('netex_active_journeys as journey', 'call.active_journey_id', '=', 'journey.id')
@@ -277,60 +298,14 @@ class RouteActivator extends RouteBase
     }
 
     /**
-     * Validate route set for the given period against already activated data.
+     * True if core data differ from activated set for given date.
      *
-     * @return $this
-     */
-    protected function validate(): self
-    {
-        $date = new Carbon($this->fromDate);
-        $toDate = new Carbon($this->toDate);
-        $validator = new RouteValidator();
-        Log::debug(sprintf("NeTEx: Validating route data between %s and %s", $this->fromDate, $this->toDate));
-
-        while ($date <= $toDate) {
-            $dateStr = $date->format('Y-m-d');
-            $mismatch = $validator->validateJourneys($dateStr);
-            if ($mismatch) {
-                $this->activationDates[] = $dateStr;
-            }
-            $this->invoke($this->dayCallback, $dateStr);
-            $date->addDay();
-        }
-        Log::debug(sprintf(
-            "NeTEx: Validation complete. Activation required for %d date(s).",
-            count($this->activationDates),
-        ));
-        return $this;
-    }
-
-    /**
      * @param string $dateStr
      * @return bool True if mismatch
      */
-    protected function validateDay($dateStr): bool
+    protected function dateDiffer($dateStr): bool
     {
-        return $this->validator->validateJourneys($dateStr);
-    }
-
-    /**
-     * Get a full list of dates to activate/deactivate
-     *
-     * @return string[]
-     */
-    protected function unwrapDates(): array
-    {
-        if (!$this->forceActivation) {
-            return $this->activationDates;
-        }
-        $dates = [];
-        $date = new Carbon($this->fromDate);
-        $toDate = new Carbon($this->toDate);
-        while ($date <= $toDate) {
-            $dates = $date->format('Y-m-d');
-            $date->addDay();
-        }
-        return $dates;
+        return $this->diffDetector->differ($dateStr);
     }
 
     /**

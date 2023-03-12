@@ -113,7 +113,7 @@ class ActivateRoutedata extends Command
         $this->info("Activating ...");
         $this->setupProgressBar();
         if ($this->option('force')) {
-            $this->activator->noValidate();
+            $this->activator->force();
         }
         $this->activator
             ->onJourney(fn () => $this->journeyCount++)

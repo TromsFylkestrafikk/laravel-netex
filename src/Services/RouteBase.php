@@ -63,7 +63,7 @@ class RouteBase
      * For calls that passes midnight, we need to keep track of the date and
      * update it when needed. This updated Carbon timestamp is returned.
      *
-     * @param \stdClass &$rawCall
+     * @param \stdClass $rawCall
      * @param string $property
      * @param \Illuminate\Support\Carbon $prevCallStamp
      *

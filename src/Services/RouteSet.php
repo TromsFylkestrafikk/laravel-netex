@@ -19,7 +19,7 @@ class RouteSet
     protected $id;
 
     /**
-     * Path to set, relative to configured disk
+     * Path to route set, relative to configured disk
      *
      * @var string
      */
