@@ -130,11 +130,8 @@ class ImportRouteData extends Command
     {
         // Progress bar setup. Initial settings used for "Parse main file".
         ProgressBar::setFormatDefinition('custom', '%percent%% [%bar%]  %elapsed% - %message%');
-        $this->progressBar = new ProgressBar($this->output);
+        $this->progressBar = $this->output->createProgressBar();
         $this->progressBar->setFormat('custom');
-        $this->progressBar->setBarCharacter('■');
-        $this->progressBar->setEmptyBarCharacter('-');
-        $this->progressBar->setProgressCharacter('▪');
     }
 
     /**

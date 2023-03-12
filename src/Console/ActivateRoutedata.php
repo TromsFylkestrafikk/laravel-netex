@@ -96,10 +96,8 @@ class ActivateRoutedata extends Command
      */
     protected function setupActivator(): void
     {
-        $fromDate = $this->argument('from-date');
-        $toDate = $this->argument('to-date');
-        $fromDate = $fromDate ?: today()->format('Y-m-d');
-        $toDate = $toDate ?: (new Carbon($fromDate))
+        $fromDate = $this->argument('from-date') ?: today()->format('Y-m-d');
+        $toDate = $this->argument('to-date') ?: (new Carbon($fromDate))
             ->add(new DateInterval(config('netex.activation_period')))
             ->format('Y-m-d');
         $this->activator = new RouteActivator($fromDate, $toDate);
@@ -119,9 +117,11 @@ class ActivateRoutedata extends Command
         }
         $this->activator
             ->onJourney(fn () => $this->journeyCount++)
-            ->onDay(function ($date) {
+            ->onDay(function ($date, $result) {
                 $this->progressBar->advance();
-                $this->progressBar->setMessage(sprintf("$date: %d journeys", $this->journeyCount));
+                $this->progressBar->setMessage(
+                    sprintf("%s: %s (%d journeys)", $date, $result, $this->journeyCount)
+                );
                 $this->progressBar->display();
                 $this->journeyCount = 0;
             })

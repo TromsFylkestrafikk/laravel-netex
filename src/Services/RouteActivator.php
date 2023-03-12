@@ -154,6 +154,7 @@ class RouteActivator extends RouteBase
         $prevCallCount = 0;
         while ($date <= $toDate) {
             $dateStr = $date->format('Y-m-d');
+            $result = 'unmodified';
             if ($this->forceActivation || $this->validateDay($dateStr)) {
                 $this->deactivateDate($dateStr)->activateDate($dateStr);
                 Log::debug(sprintf(
@@ -162,13 +163,14 @@ class RouteActivator extends RouteBase
                     $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
                     $this->callDumper->getRecordsWritten() - $prevCallCount,
                 ));
+                $result = 'activated';
             } else {
                 Log::debug(sprintf("NeTEx: %s: Not modified", $dateStr));
             }
             $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
             $prevCallCount = $this->callDumper->getRecordsWritten();
             $this->dayCount++;
-            $this->invoke($this->dayCallback, $dateStr);
+            $this->invoke($this->dayCallback, $dateStr, $result);
             $date->addDay();
         }
         Log::info(sprintf(
@@ -197,7 +199,7 @@ class RouteActivator extends RouteBase
             $dateStr = $date->format('Y-m-d');
             $this->deactivateDate($dateStr);
             $this->dayCount++;
-            $this->invoke($this->dayCallback, $dateStr);
+            $this->invoke($this->dayCallback, $dateStr, 'deactivated');
             $date->addDay();
         }
         Log::info(sprintf("NeTEx: Deactivation %s", ($this->dayCount > 0) ? 'complete.' : 'skipped.'));
