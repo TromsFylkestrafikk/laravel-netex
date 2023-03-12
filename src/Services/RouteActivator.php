@@ -156,13 +156,15 @@ class RouteActivator extends RouteBase
             $dateStr = $date->format('Y-m-d');
             if ($this->forceActivation || $this->validateDay($dateStr)) {
                 $this->deactivateDate($dateStr)->activateDate($dateStr);
+                Log::debug(sprintf(
+                    "NeTEx: %s: %d journeys and %d calls",
+                    $dateStr,
+                    $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
+                    $this->callDumper->getRecordsWritten() - $prevCallCount,
+                ));
+            } else {
+                Log::debug(sprintf("NeTEx: %s: Not modified", $dateStr));
             }
-            Log::debug(sprintf(
-                "NeTEx: %s: %d journeys and %d calls",
-                $dateStr,
-                $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
-                $this->callDumper->getRecordsWritten() - $prevCallCount,
-            ));
             $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
             $prevCallCount = $this->callDumper->getRecordsWritten();
             $this->dayCount++;

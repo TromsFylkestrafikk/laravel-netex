@@ -66,7 +66,7 @@ class ActivateRoutedata extends Command
     {
         $this->import = Import::latest()->first();
         if (!$this->import || $this->import->import_status !== 'imported') {
-            $this->error('No route set found. Nothing to do.');
+            $this->error('No route set found. Add route set with artisan netex:import-routedata.');
             return self::FAILURE;
         }
         $this->setupActivator();
