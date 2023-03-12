@@ -7,8 +7,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
-use TromsFylkestrafikk\Netex\Models\ActiveJourney;
-use TromsFylkestrafikk\Netex\Models\ActiveCall;
 use TromsFylkestrafikk\Netex\Services\RouteBase;
 use TromsFylkestrafikk\Netex\Services\RouteValidator;
 
@@ -23,6 +21,13 @@ class RouteActivator extends RouteBase
      * @var string
      */
     protected $toDate;
+
+    /**
+     * Activation/Deactivation should respect validated dates.
+     *
+     * @var bool
+     */
+    protected $forceActivation = false;
 
     /**
      * @var string[]
@@ -40,25 +45,16 @@ class RouteActivator extends RouteBase
     protected $callDumper;
 
     /**
+     * @var \TromsFylkestrafikk\Netex\Services\RouteValidator
+     */
+    protected $validator;
+
+    /**
      * Number of days processed.
      *
      * @var int
      */
     protected $dayCount;
-
-    /**
-     * Flipped version of ActiveJourney::fillable.
-     *
-     * @var array
-     */
-    protected $journeyFillable;
-
-    /**
-     * Flipped version of ActiveCall::fillable.
-     *
-     * @var array
-     */
-    protected $callFillable;
 
     /**
      * @var \Closure|null
@@ -100,6 +96,7 @@ class RouteActivator extends RouteBase
      */
     public function __construct($fromDate = null, $toDate = null, $set = null)
     {
+        parent::__construct();
         $fromDate = $this->sanitizeDate($fromDate);
         $toDate = $this->sanitizeDate($toDate);
         $dates = DB::table($set === 'active' ? 'netex_active_journeys' : 'netex_calendar')
@@ -108,12 +105,24 @@ class RouteActivator extends RouteBase
             ->first();
         $this->fromDate = $fromDate ? max($fromDate, $dates->fromDate) : $dates->fromDate;
         $this->toDate = $toDate ? min($toDate, $dates->toDate) : $dates->toDate;
+        $this->validator = new RouteValidator();
+    }
+
+    /**
+     * Don't check for existing, equal records, just re-activate.
+     *
+     * @return $this
+     */
+    public function noValidate(): self
+    {
+        $this->forceActivation = true;
+        return $this;
     }
 
     /**
      * @return string
      */
-    public function getFromDate()
+    public function getFromDate(): string
     {
         return $this->fromDate;
     }
@@ -121,7 +130,7 @@ class RouteActivator extends RouteBase
     /**
      * @return string
      */
-    public function getToDate()
+    public function getToDate(): string
     {
         return $this->toDate;
     }
@@ -131,7 +140,7 @@ class RouteActivator extends RouteBase
      *
      * @return $this
      */
-    public function activate()
+    public function activate(): self
     {
         $date = new Carbon($this->fromDate);
         $toDate = new Carbon($this->toDate);
@@ -140,39 +149,26 @@ class RouteActivator extends RouteBase
         $this->journeyDumper = new DbBulkInsert('netex_active_journeys', 'insertOrIgnore');
         $this->callDumper = new DbBulkInsert('netex_active_calls', 'insertOrIgnore');
         $this->dayCount = 0;
-        $this->callFillable = array_flip((new ActiveCall())->getFillable());
-        $this->journeyFillable = array_flip((new ActiveJourney())->getFillable());
 
         $prevJourneyCount = 0;
         $prevCallCount = 0;
         while ($date <= $toDate) {
             $dateStr = $date->format('Y-m-d');
-            if (in_array($dateStr, $this->activationDates)) {
-                // Reset internal overview of seen IDs
-                $this->callIds = [];
-                $this->aJourneyIds = [];
-                $rawJourneys = self::getRawJourneys($dateStr);
-                $this->activateJourneys($dateStr, $rawJourneys);
-                $this->dayCount++;
-                // Interim flush to assert the full day is complete, and get the
-                // correct written count.
-                $this->journeyDumper->flush();
-                $this->callDumper->flush();
-                Log::debug(sprintf(
-                    "NeTEx: %s: %d journeys and %d calls",
-                    $dateStr,
-                    $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
-                    $this->callDumper->getRecordsWritten() - $prevCallCount,
-                ));
-                $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
-                $prevCallCount = $this->callDumper->getRecordsWritten();
+            if ($this->forceActivation || $this->validateDay($dateStr)) {
+                $this->deactivateDate($dateStr)->activateDate($dateStr);
             }
+            Log::debug(sprintf(
+                "NeTEx: %s: %d journeys and %d calls",
+                $dateStr,
+                $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
+                $this->callDumper->getRecordsWritten() - $prevCallCount,
+            ));
+            $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
+            $prevCallCount = $this->callDumper->getRecordsWritten();
+            $this->dayCount++;
             $this->invoke($this->dayCallback, $dateStr);
             $date->addDay();
         }
-        // Write last prepared records;
-        $this->journeyDumper->flush();
-        $this->callDumper->flush();
         Log::info(sprintf(
             "NeTEx: Activation complete. %d days, %d journeys, %d calls",
             $this->dayCount,
@@ -187,7 +183,7 @@ class RouteActivator extends RouteBase
      *
      * @return $this
      */
-    public function deactivate($forced = false)
+    public function deactivate(): self
     {
         $date = new Carbon($this->fromDate);
         $toDate = new Carbon($this->toDate);
@@ -197,50 +193,12 @@ class RouteActivator extends RouteBase
         Log::info(sprintf("NeTEx: Deactivating route data between %s and %s", $this->fromDate, $this->toDate));
         while ($date <= $toDate) {
             $dateStr = $date->format('Y-m-d');
-            if ($forced || in_array($dateStr, $this->activationDates)) {
-                DB::table('netex_active_calls', 'call')
-                    ->join('netex_active_journeys as journey', 'call.active_journey_id', '=', 'journey.id')
-                    ->whereDate('journey.date', $date)->delete();
-                DB::table('netex_active_journeys')->whereDate('date', $date)->delete();
-                Log::debug(sprintf("NeTEx: %s: Deactivated.", $dateStr));
-                $this->dayCount++;
-            }
+            $this->deactivateDate($dateStr);
+            $this->dayCount++;
             $this->invoke($this->dayCallback, $dateStr);
             $date->addDay();
         }
-        Log::info(sprintf("NeTEx: Deactivation %s",
-            ($this->dayCount > 0) ? 'complete.' : 'skipped.',
-        ));
-        return $this;
-    }
-
-    /**
-     * Validate route set for the given period against already activated data.
-     *
-     * @return $this
-     */
-    public function validate()
-    {
-        $date = new Carbon($this->fromDate);
-        $toDate = new Carbon($this->toDate);
-
-        $validator = new RouteValidator();
-        Log::info(sprintf("NeTEx: Validating route data between %s and %s", $this->fromDate, $this->toDate));
-
-        while ($date <= $toDate) {
-            $dateStr = $date->format('Y-m-d');
-            $mismatch = $validator->validateJourneys($dateStr);
-            if ($mismatch) {
-                $this->activationDates[] = $dateStr;
-            } else {
-                Log::debug(sprintf("NeTEx: Content for %s is matching existing data.", $dateStr));
-            }
-            $this->invoke($this->dayCallback, $dateStr);
-            $date->addDay();
-        }
-        Log::info(sprintf("NeTEx: Validation complete. Activation required for %d date(s).",
-            count($this->activationDates),
-        ));
+        Log::info(sprintf("NeTEx: Deactivation %s", ($this->dayCount > 0) ? 'complete.' : 'skipped.'));
         return $this;
     }
 
@@ -251,7 +209,7 @@ class RouteActivator extends RouteBase
      *
      * @return $this
      */
-    public function onDay(Closure $closure)
+    public function onDay(Closure $closure): self
     {
         $this->dayCallback = $closure;
         return $this;
@@ -264,7 +222,7 @@ class RouteActivator extends RouteBase
      *
      * @return $this
      */
-    public function onJourney(Closure $closure)
+    public function onJourney(Closure $closure): self
     {
         $this->journeyCallback = $closure;
         return $this;
@@ -275,7 +233,7 @@ class RouteActivator extends RouteBase
      *
      * @return int[]
      */
-    public function summary()
+    public function summary(): array
     {
         return [
             'days' => $this->dayCount,
@@ -285,7 +243,97 @@ class RouteActivator extends RouteBase
         ];
     }
 
-    protected function activateJourneys($date, Collection $rawJourneys)
+    /**
+     * @param string $date
+     * @return $this
+     */
+    protected function activateDate($date): self
+    {
+        // Reset internal overview of seen IDs
+        $this->callIds = [];
+        $this->aJourneyIds = [];
+        $rawJourneys = self::getRawJourneys($date);
+        $this->activateJourneys($date, $rawJourneys);
+        $this->journeyDumper->flush();
+        $this->callDumper->flush();
+        return $this;
+    }
+
+    /**
+     * @param string $date
+     * @return $this
+     */
+    protected function deactivateDate($date): self
+    {
+        DB::table('netex_active_calls', 'call')
+            ->join('netex_active_journeys as journey', 'call.active_journey_id', '=', 'journey.id')
+            ->whereDate('journey.date', $date)->delete();
+        DB::table('netex_active_journeys')->whereDate('date', $date)->delete();
+        return $this;
+    }
+
+    /**
+     * Validate route set for the given period against already activated data.
+     *
+     * @return $this
+     */
+    protected function validate(): self
+    {
+        $date = new Carbon($this->fromDate);
+        $toDate = new Carbon($this->toDate);
+        $validator = new RouteValidator();
+        Log::debug(sprintf("NeTEx: Validating route data between %s and %s", $this->fromDate, $this->toDate));
+
+        while ($date <= $toDate) {
+            $dateStr = $date->format('Y-m-d');
+            $mismatch = $validator->validateJourneys($dateStr);
+            if ($mismatch) {
+                $this->activationDates[] = $dateStr;
+            }
+            $this->invoke($this->dayCallback, $dateStr);
+            $date->addDay();
+        }
+        Log::debug(sprintf(
+            "NeTEx: Validation complete. Activation required for %d date(s).",
+            count($this->activationDates),
+        ));
+        return $this;
+    }
+
+    /**
+     * @param string $dateStr
+     * @return bool True if mismatch
+     */
+    protected function validateDay($dateStr): bool
+    {
+        return $this->validator->validateJourneys($dateStr);
+    }
+
+    /**
+     * Get a full list of dates to activate/deactivate
+     *
+     * @return string[]
+     */
+    protected function unwrapDates(): array
+    {
+        if (!$this->forceActivation) {
+            return $this->activationDates;
+        }
+        $dates = [];
+        $date = new Carbon($this->fromDate);
+        $toDate = new Carbon($this->toDate);
+        while ($date <= $toDate) {
+            $dates = $date->format('Y-m-d');
+            $date->addDay();
+        }
+        return $dates;
+    }
+
+    /**
+     * @param string $date
+     * @param Collection $rawJourneys
+     */
+    protected function activateJourneys($date, Collection $rawJourneys): void
     {
         foreach ($rawJourneys as $rawJourney) {
             $jRec = array_intersect_key((array) $rawJourney, $this->journeyFillable);
@@ -309,7 +357,11 @@ class RouteActivator extends RouteBase
         }
     }
 
-    protected function activateJourneyCalls(array &$jRec)
+    /**
+     * @param mixed[] $jRec
+     * @return void
+     */
+    protected function activateJourneyCalls(array &$jRec): void
     {
         $rawCalls = self::getRawCalls($jRec['vehicle_journey_id']);
         $callStamp = new Carbon("{$jRec['date']} 04:00:00");
@@ -339,7 +391,7 @@ class RouteActivator extends RouteBase
      * @param mixed[] $jRec
      * @param mixed[] $rawCall
      */
-    protected function activateCall(array $jRec, array $rawCall)
+    protected function activateCall(array $jRec, array $rawCall): void
     {
         $callId = self::makeCallId($rawCall, $jRec['id']);
         if (!empty($this->callIds[$callId])) {
@@ -370,7 +422,7 @@ class RouteActivator extends RouteBase
      * @param string|null $dateStr
      * @return string|null
      */
-    protected function sanitizeDate($dateStr = null)
+    protected function sanitizeDate($dateStr = null): string|null
     {
         return $dateStr ? (new Carbon($dateStr))->format('Y-m-d') : null;
     }
@@ -382,7 +434,7 @@ class RouteActivator extends RouteBase
      *
      * @param \Closure $callback
      */
-    protected function invoke(Closure $callback = null)
+    protected function invoke(Closure $callback = null): void
     {
         if (is_callable($callback)) {
             call_user_func_array($callback, array_slice(func_get_args(), 1));

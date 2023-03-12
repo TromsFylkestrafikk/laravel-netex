@@ -2,10 +2,12 @@
 
 namespace TromsFylkestrafikk\Netex\Console;
 
-use Exception;
+use DateInterval;
 use Illuminate\Console\Command;
-use TromsFylkestrafikk\Netex\Services\RouteActivator;
+use Illuminate\Support\Carbon;
 use TromsFylkestrafikk\Netex\Console\Traits\ActivateProgress;
+use TromsFylkestrafikk\Netex\Models\Import;
+use TromsFylkestrafikk\Netex\Services\RouteActivator;
 
 class ActivateRoutedata extends Command
 {
@@ -17,8 +19,9 @@ class ActivateRoutedata extends Command
      * @var string
      */
     protected $signature = 'netex:activate
-                            {from-date? : Activate data from this date.}
-                            {to-date? : Activate route data up until this date.}';
+                            {from-date? : Activate data from this date}
+                            {to-date? : Activate route data up until this date}
+                            {--f|force : Force re-activation even if activation already exists}';
 
     /**
      * The console command description.
@@ -31,6 +34,13 @@ class ActivateRoutedata extends Command
      * @var \TromsFylkestrafikk\Netex\Services\RouteActivator
      */
     protected $activator;
+
+    /**
+     * Route set import model used during activation.
+     *
+     * @var \TromsFylkestrafikk\Netex\Models\Import
+     */
+    protected $import;
 
     /**
      * @var int
@@ -54,62 +64,68 @@ class ActivateRoutedata extends Command
      */
     public function handle()
     {
-        try {
-            $this->activator = new RouteActivator($this->argument('from-date'), $this->argument('to-date'));
-            $this->info(sprintf(
-                'Activating route data between %s and %s',
-                $this->activator->getFromDate(),
-                $this->activator->getToDate()
-            ));
-            $this->info("Step 1: Validate");
-            $this->setupProgressBar();
-            $this->activator
-                ->onDay(function ($date) {
-                    $this->progressBar->setMessage($date);
-                    $this->progressBar->advance();
-                    $this->progressBar->display();
-                })
-                ->validate();
-            $this->progressBar->finish();
+        $this->import = Import::latest()->first();
+        if (!$this->import || $this->import->import_status !== 'imported') {
+            $this->error('No route set found. Nothing to do.');
+            return self::FAILURE;
+        }
+        $this->setupActivator();
+        $this->info(sprintf(
+            'Activating route data between %s and %s',
+            $this->activator->getFromDate(),
+            $this->activator->getToDate()
+        ));
 
-            $this->info("Step 2: Deactivate");
-            $this->setupProgressBar();
-            $this->activator
-                ->onDay(function ($date) {
-                    $this->progressBar->setMessage($date);
-                    $this->progressBar->advance();
-                    $this->progressBar->display();
-                })
-                ->deactivate();
-            $this->progressBar->finish();
+        $this->activate();
 
-            $this->info("Step 3: Activate");
-            $this->setupProgressBar();
-            $this->activator
-                ->onJourney(fn () => $this->journeyCount++)
-                ->onDay(function ($date) {
-                    $this->progressBar->advance();
-                    $this->progressBar->setMessage(sprintf("$date: %d journeys", $this->journeyCount));
-                    $this->progressBar->display();
-                    $this->journeyCount = 0;
-                })
-                ->activate();
-            $this->progressBar->finish();
-            $stats = $this->activator->summary();
-            $this->info(sprintf(
-                "Activation complete. %d days, %d journeys, %d calls",
-                $stats['days'],
-                $stats['journeys'],
-                $stats['calls']
-            ));
-            if ($stats['errors']) {
-                return Command::FAILURE;
-            }
-        } catch (Exception $e) {
-            $this->error(sprintf("Error: %s", $e->getMessage()));
-            Log::error(sprintf("NeTEx: %s", $e->getMessage()));
+        $stats = $this->activator->summary();
+        $this->info(sprintf(
+            "Activation complete. %d days, %d journeys, %d calls",
+            $stats['days'],
+            $stats['journeys'],
+            $stats['calls']
+        ));
+        if ($stats['errors']) {
             return Command::FAILURE;
         }
         return Command::SUCCESS;
+    }
+
+    /**
+     * Initialize activator and set its date range
+     */
+    protected function setupActivator(): void
+    {
+        $fromDate = $this->argument('from-date');
+        $toDate = $this->argument('to-date');
+        $fromDate = $fromDate ?: today()->format('Y-m-d');
+        $toDate = $toDate ?: (new Carbon($fromDate))
+            ->add(new DateInterval(config('netex.activation_period')))
+            ->format('Y-m-d');
+        $this->activator = new RouteActivator($fromDate, $toDate);
+    }
+
+    /**
+     * Artisan wrapper around RouteActivator::activate()
+     *
+     * @return void
+     */
+    protected function activate(): void
+    {
+        $this->info("Activating ...");
+        $this->setupProgressBar();
+        if ($this->option('force')) {
+            $this->activator->noValidate();
+        }
+        $this->activator
+            ->onJourney(fn () => $this->journeyCount++)
+            ->onDay(function ($date) {
+                $this->progressBar->advance();
+                $this->progressBar->setMessage(sprintf("$date: %d journeys", $this->journeyCount));
+                $this->progressBar->display();
+                $this->journeyCount = 0;
+            })
+            ->activate();
+        $this->progressBar->finish();
     }
 }

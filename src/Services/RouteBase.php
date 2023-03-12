@@ -4,9 +4,36 @@ namespace TromsFylkestrafikk\Netex\Services;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use TromsFylkestrafikk\Netex\Models\ActiveCall;
+use TromsFylkestrafikk\Netex\Models\ActiveJourney;
 
 class RouteBase
 {
+    /**
+     * Flipped version of ActiveJourney::fillable.
+     *
+     * @var array
+     */
+    protected $journeyFillable;
+
+    /**
+     * Flipped version of ActiveCall::fillable.
+     *
+     * @var array
+     */
+    protected $callFillable;
+
+    /**
+     * Create a new class interface.
+     *
+     * @return void
+     */
+    public function __construct()
+    {
+        $this->callFillable = array_flip((new ActiveCall())->getFillable());
+        $this->journeyFillable = array_flip((new ActiveJourney())->getFillable());
+    }
+
     /**
      * @param mixed[] $journeyRecord
      *
@@ -92,18 +119,6 @@ class RouteBase
     }
 
     /**
-     * Query the already activated journey data for the given date.
-     *
-     * @param string $date
-     *
-     * @return \Illuminate\Support\Collection
-     */
-    protected static function getOldJourneys($date)
-    {
-    	return DB::table('netex_active_journeys')->whereDate('date', $date)->get();
-    }
-
-    /**
      * @param string $journeyRef
      *
      * @return \Illuminate\Support\Collection
@@ -132,17 +147,5 @@ class RouteBase
             ->orderBy('patstop.order')
             ->get();
         return $ret;
-    }
-
-    /**
-     * Query the already activated stop call data for the given date.
-     *
-     * @param string $id
-     *
-     * @return \Illuminate\Support\Collection
-     */
-    protected static function getOldCalls($id)
-    {
-    	return DB::table('netex_active_calls')->where('active_journey_id', $id)->get();
     }
 }

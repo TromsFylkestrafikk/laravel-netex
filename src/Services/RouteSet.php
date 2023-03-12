@@ -47,6 +47,11 @@ class RouteSet
     protected $files = null;
 
     /**
+     * @var int|null
+     */
+    protected $size = null;
+
+    /**
      * @param string $path Path relative to configured disk.
      * @param string $sharedFile Name of xml filed with shared data across set.
      * @param string $id Name/id of set. Generated if not given.
@@ -166,5 +171,18 @@ class RouteSet
     public function getFilePath($fileName): string
     {
         return sprintf("%s/%s", $this->getFullPath(), $fileName);
+    }
+
+    /**
+     * Size of XML files.
+     */
+    public function getSize(): int
+    {
+        if ($this->size === null) {
+            $this->size = array_reduce($this->getFiles(), function ($size, $file) {
+                return $size + filesize($file);
+            }, 0);
+        }
+        return $this->size;
     }
 }

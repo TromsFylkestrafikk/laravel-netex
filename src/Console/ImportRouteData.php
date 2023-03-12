@@ -89,7 +89,7 @@ class ImportRouteData extends Command
      *
      * @return int
      */
-    public function handle(StopsActivator $stopsActivator)
+    public function handle(StopsActivator $stopsActivator): int
     {
         $this->stopsActivator = $stopsActivator;
         $this->lpInfo('Importing NeTEx route data files...');
@@ -106,6 +106,8 @@ class ImportRouteData extends Command
         $this->import = Import::create([
             'path' => $netexDir,
             'md5' => $this->routeSet->getMd5(),
+            'size' => $this->routeSet->getSize(),
+            'files' => count($this->routeSet->getFiles()),
             'import_status' => 'importing',
             'message' => 'Importing core netex data.',
         ]);
@@ -171,7 +173,7 @@ class ImportRouteData extends Command
         $this->newLine();
     }
 
-    protected function processSharedFile(NetexDatabase $database)
+    protected function processSharedFile(NetexDatabase $database): void
     {
         $this->parser->parseMainXmlFile();
         $this->parser->generateCalendar();
@@ -202,7 +204,10 @@ class ImportRouteData extends Command
         }
     }
 
-    protected function finalizeImport()
+    /**
+     * Finish up route import.
+     */
+    protected function finalizeImport(): void
     {
         if (!$this->linesProcessed || !$this->parser->availableFrom || !$this->parser->availableTo) {
             throw new Exception('Imported route set is missing critical data.');

@@ -3,54 +3,22 @@
 namespace TromsFylkestrafikk\Netex\Services;
 
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Log;
-use TromsFylkestrafikk\Netex\Models\ActiveCall;
-use TromsFylkestrafikk\Netex\Models\ActiveJourney;
+use Illuminate\Support\Facades\DB;
 use TromsFylkestrafikk\Netex\Services\RouteBase;
 
 class RouteValidator extends RouteBase
 {
-    /**
-     * Array of dates to be activated.
-     */
-    public $activationDates = [];
-
     /**
      * Callback function with $date parameter for matching content event.
      */
     public $onMatchingContentCallback;
 
     /**
-     * Flipped version of ActiveJourney::fillable.
-     *
-     * @var array
-     */
-    protected $journeyFillable;
-
-    /**
-     * Flipped version of ActiveCall::fillable.
-     *
-     * @var array
-     */
-    protected $callFillable;
-
-    /**
-     * Create a new class interface.
-     *
-     * @return void
-     */
-    public function __construct()
-    {
-        $this->callFillable = array_flip((new ActiveCall())->getFillable());
-        $this->journeyFillable = array_flip((new ActiveJourney())->getFillable());
-    }
-
-    /**
      * Validate journeys on a given date.
      *
      * @param string $date
      */
-    public function validateJourneys($date)
+    public function validateJourneys($date): bool
     {
         $oldJourneys = self::getOldJourneys($date);
         $rawJourneys = self::getRawJourneys($date);
@@ -62,7 +30,8 @@ class RouteValidator extends RouteBase
         foreach ($rawJourneys as $rawJourney) {
             $jRec = array_intersect_key((array) $rawJourney, $this->journeyFillable);
             $jRec['date'] = $date;
-            $jRec['id'] = self::makeJourneyId($jRec);
+            $journeyId = self::makeJourneyId($jRec);
+            $jRec['id'] = $journeyId;
 
             $mismatch = $this->validateJourneyCalls($jRec);
             if ($mismatch) {
@@ -70,13 +39,11 @@ class RouteValidator extends RouteBase
             }
 
             // Find and remove journey from old collection.
-            $id = $jRec['id'];
-            $index = $oldJourneys->search(fn ($item) => $item->id === $id);
-            if ($index === false) {
+            if (!$oldJourneys->has($journeyId)) {
                 // ID not found in existing database table.
                 return true;
             }
-            $oldJourney = $oldJourneys->pull($index);
+            $oldJourney = $oldJourneys->pull($journeyId);
 
             // Compare old and new journey data.
             $diff = array_diff_assoc($jRec, (array) $oldJourney);
@@ -92,7 +59,7 @@ class RouteValidator extends RouteBase
      *
      * @param array &$jRec
      */
-    protected function validateJourneyCalls(array &$jRec)
+    protected function validateJourneyCalls(array &$jRec): bool
     {
         $oldCalls = self::getOldCalls($jRec['id']);
         $rawCalls = self::getRawCalls($jRec['vehicle_journey_id']);
@@ -139,5 +106,29 @@ class RouteValidator extends RouteBase
         $jRec['start_at'] = $first->departure_time;
         $jRec['end_at'] = $last->arrival_time;
         return false;
+    }
+
+    /**
+     * Query the already activated journey data for the given date.
+     *
+     * @param string $date
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    protected static function getOldJourneys($date): \Illuminate\Support\Collection
+    {
+        return DB::table('netex_active_journeys')->whereDate('date', $date)->get()->keyBy('id');
+    }
+
+    /**
+     * Query the already activated stop call data for the given date.
+     *
+     * @param string $id
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    protected static function getOldCalls($id)
+    {
+        return DB::table('netex_active_calls')->where('active_journey_id', $id)->get()->keyBy('id');
     }
 }

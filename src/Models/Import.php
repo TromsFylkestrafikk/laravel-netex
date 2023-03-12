@@ -34,5 +34,17 @@ class Import extends Model
 {
     protected $table = 'netex_imports';
 
-    protected $fillable = ['path', 'md5', 'available_from', 'available_to', 'import_status', 'message'];
+    protected $fillable = [
+        'path',
+        'md5',
+        'size',
+        'files',
+        'journeys',
+        'calls',
+        'available_from',
+        'available_to',
+        'activated',
+        'import_status',
+        'message',
+    ];
 }
