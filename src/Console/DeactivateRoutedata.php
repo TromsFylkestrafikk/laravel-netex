@@ -61,7 +61,7 @@ class DeactivateRoutedata extends Command
                 $this->progressBar->advance();
                 $this->progressBar->setMessage($date);
             })
-            ->deactivate(true);
+            ->deactivate();
         $this->progressBar->finish();
         return self::SUCCESS;
     }
