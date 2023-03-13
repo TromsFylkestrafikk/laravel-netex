@@ -13,7 +13,7 @@ use TromsFylkestrafikk\Netex\Models\Import;
 use TromsFylkestrafikk\Netex\Services\StopsActivator;
 use TromsFylkestrafikk\Netex\Services\RouteSet;
 
-class ImportRouteData extends Command
+class ImportRoutedata extends Command
 {
     use LogAndPrint;
 

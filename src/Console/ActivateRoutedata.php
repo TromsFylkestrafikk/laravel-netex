@@ -21,14 +21,15 @@ class ActivateRoutedata extends Command
     protected $signature = 'netex:activate
                             {from-date? : Activate data from this date}
                             {to-date? : Activate route data up until this date}
-                            {--f|force : Force re-activation even if activation already exists}';
+                            {--f|force : Force re-activation even if activation already exists}
+                            {--m|missing : Activate only missing dates within period}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Activate netex routedata for fast queries';
+    protected $description = 'Activate netex route data for faster and more direct queries';
 
     /**
      * @var \TromsFylkestrafikk\Netex\Services\RouteActivator
@@ -114,6 +115,9 @@ class ActivateRoutedata extends Command
         $this->setupProgressBar();
         if ($this->option('force')) {
             $this->activator->force();
+        }
+        if ($this->option('missing')) {
+            $this->activator->missingOnly();
         }
         $this->activator
             ->onJourney(fn () => $this->journeyCount++)

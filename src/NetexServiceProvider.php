@@ -5,7 +5,7 @@ namespace TromsFylkestrafikk\Netex;
 use Illuminate\Support\ServiceProvider;
 use TromsFylkestrafikk\Netex\Console\ActivationStatus;
 use TromsFylkestrafikk\Netex\Console\ActivateRoutedata;
-use TromsFylkestrafikk\Netex\Console\ImportRouteData;
+use TromsFylkestrafikk\Netex\Console\ImportRoutedata;
 use TromsFylkestrafikk\Netex\Console\DeactivateRoutedata;
 use TromsFylkestrafikk\Netex\Console\ImportStops;
 use TromsFylkestrafikk\Netex\Console\SyncActiveStops;
@@ -60,7 +60,7 @@ class NetexServiceProvider extends ServiceProvider
                 ActivateRoutedata::class,
                 DeactivateRoutedata::class,
                 ImportStops::class,
-                ImportRouteData::class,
+                ImportRoutedata::class,
                 SyncActiveStops::class,
             ]);
         }

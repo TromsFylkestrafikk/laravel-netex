@@ -8,6 +8,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use TromsFylkestrafikk\Netex\Services\RouteBase;
+use TromsFylkestrafikk\Netex\Models\ActiveJourney;
 
 class RouteActivator extends RouteBase
 {
@@ -27,6 +28,13 @@ class RouteActivator extends RouteBase
      * @var bool
      */
     protected $forceActivation = false;
+
+    /**
+     * Skip activating days with data present.
+     *
+     * @var bool
+     */
+    protected $activateMissingOnly = false;
 
     /**
      * @var \TromsFylkestrafikk\Netex\Services\DbBulkInsert
@@ -76,8 +84,15 @@ class RouteActivator extends RouteBase
 
     /**
      * Error indicator (e.g. for duplicate journey/call IDs).
+     *
+     * @var bool
      */
     protected $hasErrors = false;
+
+    /**
+     * @var string
+     */
+    protected $dayActivationStatus = null;
 
     /**
      * Create a new command instance.
@@ -104,11 +119,24 @@ class RouteActivator extends RouteBase
     /**
      * Force re-activation of existing active data.
      *
+     * @param bool $value
      * @return $this
      */
-    public function force(): self
+    public function force($value = true): self
     {
-        $this->forceActivation = true;
+        $this->forceActivation = $value;
+        return $this;
+    }
+
+    /**
+     * Only activate days with empty data.
+     *
+     * @param bool $value
+     * @return $this
+     */
+    public function missingOnly($value = true): self
+    {
+        $this->activateMissingOnly = $value;
         return $this;
     }
 
@@ -213,25 +241,20 @@ class RouteActivator extends RouteBase
     public function activateDate($date): self
     {
         $this->assertServices();
-        $prevJourneyCount = 0;
-        $prevCallCount = 0;
-        $result = 'unmodified';
-        if ($this->forceActivation || $this->dateDiffer($date)) {
-            $this->destroyActiveDate($date)->buildActiveDate($date);
-            Log::debug(sprintf(
-                "NeTEx: %s: %d journeys and %d calls",
-                $date,
-                $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
-                $this->callDumper->getRecordsWritten() - $prevCallCount,
-            ));
-            $result = 'activated';
-        } else {
-            Log::debug(sprintf("NeTEx: %s: Not modified", $date));
-        }
         $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
         $prevCallCount = $this->callDumper->getRecordsWritten();
+        if ($this->activationRequired($date)) {
+            $this->destroyActiveDate($date)->buildActiveDate($date);
+        }
+        Log::debug(sprintf(
+            "NeTEx: %s: %s (%d journeys, %d calls)",
+            $date,
+            $this->dayActivationStatus,
+            $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
+            $this->callDumper->getRecordsWritten() - $prevCallCount,
+        ));
         $this->dayCount++;
-        $this->invoke($this->dayCallback, $date, $result);
+        $this->invoke($this->dayCallback, $date, $this->dayActivationStatus);
         return $this;
     }
 
@@ -264,6 +287,21 @@ class RouteActivator extends RouteBase
         $this->callDumper = new DbBulkInsert('netex_active_calls', 'insertOrIgnore');
         $this->diffDetector = new RouteSetDiffDetector();
         return $this;
+    }
+
+    protected function activationRequired($date): bool
+    {
+        if ($this->forceActivation) {
+            $this->dayActivationStatus = 'forced';
+            return true;
+        }
+        if ($this->activateMissingOnly && $this->activeJourneys($date)) {
+            $this->dayActivationStatus = 'skipped: data exists';
+            return false;
+        }
+        $differ = $this->dateDiffer($date);
+        $this->dayActivationStatus = $differ ? 'activated' : 'skipped: not modified';
+        return $differ;
     }
 
     /**
@@ -393,6 +431,16 @@ class RouteActivator extends RouteBase
                 'line_private_code' => $jRec['line_private_code'],
             ]
         ));
+    }
+
+    /**
+     * Get number of activated journeys for given day.
+     *
+     * @param string $date
+     */
+    protected function activeJourneys($date): int
+    {
+        return ActiveJourney::where('date', $date)->count();
     }
 
     /**
