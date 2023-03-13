@@ -19,13 +19,22 @@ return new class extends Migration
             $table->char('md5')->nullable()->comment('MD5 sum of entire set');
             $table->unsignedInteger('size')->comment('Collected size of XMLs in route set');
             $table->unsignedInteger('files')->comment('Number of XMLs in route set');
-            $table->unsignedInteger('journeys')->nullable()->comment('Number of journeys found in set');
-            $table->unsignedInteger('calls')->nullable()->comment('Number of calls found in set');
             $table->date('available_from')->nullable()->comment('Route set vailability from date');
             $table->date('available_to')->nullable()->comment('Route set availability to date');
-            $table->boolean('activated')->nullable()->comment('Route set is activated');
-            $table->enum('import_status', ['new', 'importing', 'imported', 'error'])->default('new')->comment('Status of this import');
+            $table->enum('import_status', ['new', 'importing', 'imported', 'error'])
+                ->default('new')
+                ->comment('Status of this import');
             $table->string('message')->nullable()->comment('Message of what failed during import');
+            $table->timestamps();
+        });
+
+        Schema::create('netex_active_status', function (Blueprint $table) {
+            $table->id()->comment('Unique active status ID');
+            $table->unsignedBigInteger('import_id')->comment('Reference to import ID');
+            $table->date('date')->comment('Date of activation');
+            $table->enum('status', ['empty', 'incomplete', 'activated'])
+                ->default('empty')
+                ->comment('Activation status for given day');
             $table->timestamps();
         });
     }
@@ -38,5 +47,6 @@ return new class extends Migration
     public function down()
     {
         Schema::dropIfExists('netex_imports');
+        Schema::dropIfExists('netex_active_status');
     }
 };
