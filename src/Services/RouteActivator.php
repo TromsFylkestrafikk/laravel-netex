@@ -250,21 +250,27 @@ class RouteActivator extends RouteBase
     public function activateDate($date): self
     {
         $status = ActiveStatus::firstOrCreate(['id' => $date], [
-            'status' => 'incomplete',
             'import_id' => $this->import->id,
+            'status' => 'incomplete',
         ]);
         $this->assertServices();
         $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
         $prevCallCount = $this->callDumper->getRecordsWritten();
         if ($this->activationRequired($date)) {
             $this->destroyActiveDate($date)->buildActiveDate($date);
+            $status->fill([
+                'journeys' => $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
+                'calls' => $this->callDumper->getRecordsWritten() - $prevCallCount,
+            ]);
         }
+        $status->status = 'activated';
+        $status->save();
         Log::debug(sprintf(
             "NeTEx: %s: %s (%d journeys, %d calls)",
             $date,
             $this->dayActivationStatus,
-            $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
-            $this->callDumper->getRecordsWritten() - $prevCallCount,
+            $status->journeys,
+            $status->calls,
         ));
         $this->dayCount++;
         $this->invoke($this->dayCallback, $date, $this->dayActivationStatus);
