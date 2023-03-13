@@ -9,9 +9,16 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use TromsFylkestrafikk\Netex\Services\RouteBase;
 use TromsFylkestrafikk\Netex\Models\ActiveJourney;
+use TromsFylkestrafikk\Netex\Models\ActiveStatus;
+use TromsFylkestrafikk\Netex\Models\Import;
 
 class RouteActivator extends RouteBase
 {
+    /**
+     * @var \TromsFylkestrafikk\Netex\Models\Import
+     */
+    protected $import;
+
     /**
      * @var string
      */
@@ -97,15 +104,17 @@ class RouteActivator extends RouteBase
     /**
      * Create a new command instance.
      *
-     * @param string|null $fromDate
-     * @param string|null $toDate
+     * @param Import $import What route set the activation belongs to
+     * @param string|null $fromDate Activation from date
+     * @param string|null $toDate Activation to date (including)
      * @param string|null $set Either 'active' or 'raw'. Active uses dates found in active tables.
      *
      * @return void
      */
-    public function __construct($fromDate = null, $toDate = null, $set = null)
+    public function __construct(Import $import, $fromDate = null, $toDate = null, $set = null)
     {
         parent::__construct();
+        $this->import = $import;
         $fromDate = $this->sanitizeDate($fromDate);
         $toDate = $this->sanitizeDate($toDate);
         $dates = DB::table($set === 'active' ? 'netex_active_journeys' : 'netex_calendar')
@@ -240,6 +249,10 @@ class RouteActivator extends RouteBase
      */
     public function activateDate($date): self
     {
+        $status = ActiveStatus::firstOrCreate(['id' => $date], [
+            'status' => 'incomplete',
+            'import_id' => $this->import->id,
+        ]);
         $this->assertServices();
         $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
         $prevCallCount = $this->callDumper->getRecordsWritten();

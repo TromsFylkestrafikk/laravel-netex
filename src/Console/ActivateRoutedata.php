@@ -101,7 +101,7 @@ class ActivateRoutedata extends Command
         $toDate = $this->argument('to-date') ?: (new Carbon($fromDate))
             ->add(new DateInterval(config('netex.activation_period')))
             ->format('Y-m-d');
-        $this->activator = new RouteActivator($fromDate, $toDate);
+        $this->activator = new RouteActivator($this->import, $fromDate, $toDate);
     }
 
     /**

@@ -29,9 +29,8 @@ return new class extends Migration
         });
 
         Schema::create('netex_active_status', function (Blueprint $table) {
-            $table->id()->comment('Unique active status ID');
+            $table->date('id')->index()->comment('Date of activation');
             $table->unsignedBigInteger('import_id')->comment('Reference to import ID');
-            $table->date('date')->comment('Date of activation');
             $table->enum('status', ['empty', 'incomplete', 'activated'])
                 ->default('empty')
                 ->comment('Activation status for given day');

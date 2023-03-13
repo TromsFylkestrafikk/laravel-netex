@@ -28,8 +28,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class ActiveStatus extends Model
 {
+    public $incrementing = false;
     protected $table = 'netex_active_status';
-    protected $fillable = ['import_id', 'date', 'status'];
+    protected $keyType = 'string';
+    protected $fillable = ['id', 'import_id', 'status'];
 
     public function import(): BelongsTo
     {
