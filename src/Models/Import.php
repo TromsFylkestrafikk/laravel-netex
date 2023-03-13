@@ -2,6 +2,7 @@
 
 namespace TromsFylkestrafikk\Netex\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -57,4 +58,9 @@ class Import extends Model
         'import_status',
         'message',
     ];
+
+    public function scopeImported(Builder $query): void
+    {
+        $query->where('import_status', 'imported');
+    }
 }
