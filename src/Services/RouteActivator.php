@@ -249,10 +249,12 @@ class RouteActivator extends RouteBase
      */
     public function activateDate($date): self
     {
-        $status = ActiveStatus::firstOrCreate(['id' => $date], [
+        // @var ActiveStatus $status
+        $status = ActiveStatus::firstOrNew(['id' => $date]);
+        $status->fill([
             'import_id' => $this->import->id,
             'status' => 'incomplete',
-        ]);
+        ])->save();
         $this->assertServices();
         $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
         $prevCallCount = $this->callDumper->getRecordsWritten();
