@@ -3,8 +3,9 @@
 namespace TromsFylkestrafikk\Netex\Console;
 
 use Illuminate\Console\Command;
-use TromsFylkestrafikk\Netex\Services\RouteActivator;
 use TromsFylkestrafikk\Netex\Console\Traits\ActivateProgress;
+use TromsFylkestrafikk\Netex\Models\Import;
+use TromsFylkestrafikk\Netex\Services\RouteActivator;
 
 class DeactivateRoutedata extends Command
 {
@@ -48,7 +49,12 @@ class DeactivateRoutedata extends Command
      */
     public function handle()
     {
-        $this->activator = new RouteActivator($this->argument('from-date'), $this->argument('to-date'), 'active');
+        $import = Import::latest()->first();
+        if (!$import) {
+            $this->error('Import some route data before deactivating');
+            return self::FAILURE;
+        }
+        $this->activator = new RouteActivator($import, $this->argument('from-date'), $this->argument('to-date'), 'active');
         $this->info(sprintf(
             "De-activating routedata between %s and %s",
             $this->activator->getFromDate(),

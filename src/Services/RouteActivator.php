@@ -166,6 +166,32 @@ class RouteActivator extends RouteBase
     }
 
     /**
+     * Add handler for completing a full day of vehicle journeys.
+     *
+     * @param Closure $closure
+     *
+     * @return $this
+     */
+    public function onDay(Closure $closure): self
+    {
+        $this->dayCallback = $closure;
+        return $this;
+    }
+
+    /**
+     * Add handler for completing a single journey.
+     *
+     * @param Closure $closure
+     *
+     * @return $this
+     */
+    public function onJourney(Closure $closure): self
+    {
+        $this->journeyCallback = $closure;
+        return $this;
+    }
+
+    /**
      * Activate route data for given dates.
      *
      * @return $this
@@ -206,38 +232,19 @@ class RouteActivator extends RouteBase
         Log::info(sprintf("NeTEx: Deactivating route data between %s and %s", $this->fromDate, $this->toDate));
         while ($date <= $toDate) {
             $dateStr = $date->format('Y-m-d');
+            $status = ActiveStatus::firstOrNew(['id' => $dateStr], ['import_id' => $this->import->id]);
+            $status->fill([
+                'status' => 'incomplete',
+                'journeys' => null,
+                'count' => null,
+            ])->save();
             $this->destroyActiveDate($dateStr);
+            $status->fill(['status' => 'empty'])->save();
             $this->dayCount++;
             $this->invoke($this->dayCallback, $dateStr, 'deactivated');
             $date->addDay();
         }
         Log::info(sprintf("NeTEx: Deactivation %s", ($this->dayCount > 0) ? 'complete.' : 'skipped.'));
-        return $this;
-    }
-
-    /**
-     * Add handler for completing a full day of vehicle journeys.
-     *
-     * @param Closure $closure
-     *
-     * @return $this
-     */
-    public function onDay(Closure $closure): self
-    {
-        $this->dayCallback = $closure;
-        return $this;
-    }
-
-    /**
-     * Add handler for completing a single journey.
-     *
-     * @param Closure $closure
-     *
-     * @return $this
-     */
-    public function onJourney(Closure $closure): self
-    {
-        $this->journeyCallback = $closure;
         return $this;
     }
 
@@ -258,15 +265,14 @@ class RouteActivator extends RouteBase
         $this->assertServices();
         $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
         $prevCallCount = $this->callDumper->getRecordsWritten();
-        if ($this->activationRequired($date)) {
+        if ($this->activationRequired($status)) {
             $this->destroyActiveDate($date)->buildActiveDate($date);
             $status->fill([
                 'journeys' => $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
                 'calls' => $this->callDumper->getRecordsWritten() - $prevCallCount,
             ]);
         }
-        $status->status = 'activated';
-        $status->save();
+        $status->fill(['status' => 'activated'])->save();
         Log::debug(sprintf(
             "NeTEx: %s: %s (%d journeys, %d calls)",
             $date,
@@ -310,17 +316,23 @@ class RouteActivator extends RouteBase
         return $this;
     }
 
-    protected function activationRequired($date): bool
+    /**
+     * @param ActiveStatus $status
+     */
+    protected function activationRequired(ActiveStatus $status): bool
     {
         if ($this->forceActivation) {
             $this->dayActivationStatus = 'forced';
             return true;
         }
-        if ($this->activateMissingOnly && $this->activeJourneys($date)) {
+        if ($status->status !== 'activated') {
+            return true;
+        }
+        if ($this->activateMissingOnly && $this->activeJourneys($status->id)) {
             $this->dayActivationStatus = 'skipped: data exists';
             return false;
         }
-        $differ = $this->dateDiffer($date);
+        $differ = $this->activationDiffer($status->id);
         $this->dayActivationStatus = $differ ? 'activated' : 'skipped: not modified';
         return $differ;
     }
@@ -362,7 +374,7 @@ class RouteActivator extends RouteBase
      * @param string $dateStr
      * @return bool True if mismatch
      */
-    protected function dateDiffer($dateStr): bool
+    protected function activationDiffer($dateStr): bool
     {
         return $this->diffDetector->differ($dateStr);
     }

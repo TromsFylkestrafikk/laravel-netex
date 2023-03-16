@@ -5,8 +5,9 @@ namespace TromsFylkestrafikk\Netex\Console;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use TromsFylkestrafikk\Netex\Console\Helpers\RoutePeriodBar;
-use TromsFylkestrafikk\Netex\Models\ActiveCall;
 use TromsFylkestrafikk\Netex\Models\ActiveJourney;
+use TromsFylkestrafikk\Netex\Models\ActiveStatus;
+use TromsFylkestrafikk\Netex\Models\Import;
 use TromsFylkestrafikk\Netex\Services\RouteActivator;
 
 class ActivationStatus extends Command
@@ -17,7 +18,8 @@ class ActivationStatus extends Command
      * @var string
      */
     protected $signature = 'netex:status
-                            {date? : Show status for this date}';
+                            {date? : Show status for this date}
+                            {--t|table : Show detailed day-to-day table status}';
 
     /**
      * The console command description.
@@ -25,6 +27,11 @@ class ActivationStatus extends Command
      * @var string
      */
     protected $description = 'Show status of current route data';
+
+    /**
+     * @var Import
+     */
+    protected $import;
 
     /**
      * @var \TromsFylkestrafikk\Netex\Services\RouteActivator
@@ -49,20 +56,33 @@ class ActivationStatus extends Command
     /**
      * Execute the console command.
      *
-     * @return mixed
+     * @return int
      */
-    public function handle()
+    public function handle(): int
     {
-        $this->passiveSet = new RouteActivator();
-        $this->activeSet = new RouteActivator(null, null, 'active');
-        if ($this->argument('date')) {
-            return $this->dayStatus($this->argument('date'));
-        } else {
-            return $this->overallStatus();
+        $this->import = Import::latest()->first();
+        if (!$this->import) {
+            $this->error('Import some route data before deactivating');
+            return self::FAILURE;
         }
+        $this->passiveSet = new RouteActivator($this->import);
+        $this->activeSet = new RouteActivator($this->import, null, null, 'active');
+        if (!$this->activeSet->getFromDate()) {
+            $this->warn('No active route date. Activate some with artisan netex:activate');
+            return self::SUCCESS;
+        }
+        if ($this->argument('date')) {
+            $this->dayStatus($this->argument('date'));
+            return self::SUCCESS;
+        }
+        $this->overallStatus();
+        if ($this->option('table')) {
+            $this->detailedStatus();
+        }
+        return self::SUCCESS;
     }
 
-    protected function overallStatus()
+    protected function overallStatus(): void
     {
         $this->line((new RoutePeriodBar($this->passiveSet, $this->activeSet))->bars());
         $missing = $this->missingDates();
@@ -70,25 +90,46 @@ class ActivationStatus extends Command
         if ($missing) {
             $this->info(sprintf("Missing days: \n\t- %s", implode("\n\t- ", $missing)), 'v');
         }
-        return self::SUCCESS;
     }
 
-    protected function dayStatus($dateStr)
+    /**
+     * Print day-to-day activation status as table
+     */
+    protected function detailedStatus(): void
     {
-        $date = new Carbon($dateStr);
-        $journeyCount = ActiveJourney::whereDate('date', $date)->count();
-        $callCount = ActiveJourney::whereDate('date', $date)
-            ->withCount('activeCalls')
-            ->get()
-            ->sum('active_calls_count');
-        $firstJourney = ActiveJourney::whereDate('date', $date)->first();
-        $activationDate = $firstJourney
-            ? (new Carbon($firstJourney->created_at))->format('Y-m-d')
-            : '-';
-        $this->table(['Journeys', 'Calls', 'Activated'], [[$journeyCount, $callCount, $activationDate]]);
+        $this->table([
+            'Date',
+            'Route set',
+            'Journeys',
+            'Calls',
+            'Status',
+            'Created',
+            'Updated',
+        ], ActiveStatus::select(
+            'id',
+            'import_id',
+            'journeys',
+            'calls',
+            'status',
+            'created_at',
+            'updated_at'
+        )->orderBy('id')->get()->toArray());
     }
 
-    protected function missingDates()
+    /**
+     * @param $dateStr
+     * @return void
+     */
+    protected function dayStatus($dateStr): void
+    {
+        $status = ActiveStatus::find($dateStr);
+        if (!$status) {
+            return;
+        }
+        $this->table(['Journeys', 'Calls', 'Activated'], [[$status->journeys, $status->calls, $status->updated_at]]);
+    }
+
+    protected function missingDates(): array
     {
         $current = new Carbon($this->activeSet->getFromDate());
         $end = new Carbon($this->activeSet->getToDate());
@@ -102,7 +143,11 @@ class ActivationStatus extends Command
         return $missing;
     }
 
-    protected function activeJourneys($date = null)
+    /**
+     * @param string $date
+     * @return int
+     */
+    protected function activeJourneys(string $date): int
     {
         return $date ? ActiveJourney::whereDate('date', $date)->count() : ActiveJourney::count();
     }
