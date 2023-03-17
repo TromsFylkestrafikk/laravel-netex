@@ -19,6 +19,7 @@ class DeactivateRoutedata extends Command
     protected $signature = 'netex:deactivate
                             {from-date? : De-activate data from this date}
                             {to-date? : De-activate route data to this date}
+                            {--o|old : Remove old activation data}
                             {--p|purge : Purge activation status entry too}';
 
     /**
@@ -27,6 +28,11 @@ class DeactivateRoutedata extends Command
      * @var string
      */
     protected $description = 'De-activate route data.';
+
+    /**
+     * @var Import
+     */
+    protected $import;
 
     /**
      * @var \TromsFylkestrafikk\Netex\Services\RouteActivator
@@ -50,12 +56,15 @@ class DeactivateRoutedata extends Command
      */
     public function handle()
     {
-        $import = Import::latest()->first();
-        if (!$import) {
+        $this->import = Import::latest()->first();
+        if (!$this->import) {
             $this->error('Import some route data before deactivating');
             return self::FAILURE;
         }
-        $this->activator = new RouteActivator($import, $this->argument('from-date'), $this->argument('to-date'), 'active');
+        $initStatus = $this->initActivator();
+        if ($initStatus !== self::SUCCESS) {
+            return $initStatus;
+        }
         $this->info(sprintf(
             "De-activating routedata between %s and %s",
             $this->activator->getFromDate(),
@@ -71,6 +80,31 @@ class DeactivateRoutedata extends Command
             })
             ->deactivate();
         $this->progressBar->finish();
+        return self::SUCCESS;
+    }
+
+    protected function initActivator(): int
+    {
+        if ($this->option('old')) {
+            if ($this->argument('from-date')) {
+                $this->error('Cannot use dates with --old');
+                return self::FAILURE;
+            }
+            $fromDate = null;
+            $toDate = today()->subDays(1)->format('Y-m-d');
+        } else {
+            $fromDate = $this->argument('from-date');
+            $toDate = $this->argument('to-date');
+        }
+        $this->activator = new RouteActivator($this->import, $fromDate, $toDate, 'active');
+        if ($this->activator->getFromDate() > $this->activator->getToDate()) {
+            $this->error(sprintf(
+                'From date (%s) cannot be after To date (%s)',
+                $this->activator->getFromDate(),
+                $this->activator->getToDate()
+            ));
+            return self::FAILURE;
+        }
         return self::SUCCESS;
     }
 }

@@ -113,13 +113,9 @@ class ActivateRoutedata extends Command
     {
         $this->info("Activating ...");
         $this->setupProgressBar();
-        if ($this->option('force')) {
-            $this->activator->force();
-        }
-        if ($this->option('missing')) {
-            $this->activator->missingOnly();
-        }
         $this->activator
+            ->force($this->option('force'))
+            ->missingOnly($this->option('missing'))
             ->onJourney(fn () => $this->journeyCount++)
             ->onDay(function ($date, $result) {
                 $this->progressBar->advance();

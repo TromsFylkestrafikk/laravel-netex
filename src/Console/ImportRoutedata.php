@@ -26,7 +26,7 @@ class ImportRoutedata extends Command
                             {path : Path to route set directory, relative to netex disk root}
                             {main : Filename of shared NeTEx XML data}
                             {--f|force : Force update, even if not modified}
-                            {--s|no-sync-stops : Don\'t sync active stop places found in set}';
+                            {--n|no-sync-stops : Don\'t sync active stop places found in set}';
 
     /**
      * The console command description.

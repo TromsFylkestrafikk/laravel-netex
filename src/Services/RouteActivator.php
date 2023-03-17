@@ -294,6 +294,10 @@ class RouteActivator extends RouteBase
                 'journeys' => $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
                 'calls' => $this->callDumper->getRecordsWritten() - $prevCallCount,
             ]);
+        } elseif (!$this->activateMissingOnly) {
+            // We assume ownership of this import if we're sure the content is
+            // equal. The only exception is with self::missingOnly().
+            $status->import_id = $this->import->id;
         }
         $status->fill(['status' => 'activated'])->save();
         Log::debug(sprintf(
