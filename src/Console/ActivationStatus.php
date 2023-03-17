@@ -19,7 +19,7 @@ class ActivationStatus extends Command
      */
     protected $signature = 'netex:status
                             {date? : Show status for this date}
-                            {--t|table : Show detailed day-to-day table status}';
+                            {--d|detail : Show detailed day-to-day table status}';
 
     /**
      * The console command description.
@@ -75,8 +75,9 @@ class ActivationStatus extends Command
             $this->dayStatus($this->argument('date'));
             return self::SUCCESS;
         }
-        $this->overallStatus();
-        if ($this->option('table')) {
+        $this->overallActiveStatus();
+        $this->periodBars();
+        if ($this->option('detail')) {
             $this->detailedStatus();
         } else {
             $this->listedStatus();
@@ -84,14 +85,20 @@ class ActivationStatus extends Command
         return self::SUCCESS;
     }
 
-    protected function overallStatus(): void
+    protected function periodBars(): void
     {
         $this->line((new RoutePeriodBar($this->passiveSet, $this->activeSet))->bars());
-        $missing = $this->missingDates();
-        $this->line(sprintf("Days in active set without active journeys: %d", count($missing)));
-        if ($missing) {
-            $this->info(sprintf("Missing days: \n\t- %s", implode("\n\t- ", $missing)), 'v');
+    }
+
+    protected function overallActiveStatus(): void
+    {
+        $this->newLine();
+        if ($this->activeSet->isActive()) {
+            $this->info('[ OK ] Route set is active within configured period');
+        } else {
+            $this->warn('[ WARNING ] Route set is NOT active within configured period');
         }
+        $this->newLine();
     }
 
     /**
@@ -166,21 +173,5 @@ class ActivationStatus extends Command
             return;
         }
         $this->table(['Journeys', 'Calls', 'Activated'], [[$status->journeys, $status->calls, $status->updated_at]]);
-    }
-
-    protected function missingDates(): array
-    {
-        $current = new Carbon($this->activeSet->getFromDate());
-        $end = new Carbon($this->activeSet->getToDate());
-        $stats = ActiveStatus::where('id', '>=', $current)->where('id', '<=', $end)->get()->keyBy('id');
-        $missing = [];
-        while ($current < $end) {
-            $date = $current->format('Y-m-d');
-            if (empty($stats[$date]) || $stats[$date]->status !== 'activated') {
-                $missing[] = $date;
-            }
-            $current->addDay();
-        }
-        return $missing;
     }
 }

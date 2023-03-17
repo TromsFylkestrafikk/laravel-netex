@@ -18,7 +18,8 @@ class DeactivateRoutedata extends Command
      */
     protected $signature = 'netex:deactivate
                             {from-date? : De-activate data from this date}
-                            {to-date? : De-activate route data to this date}';
+                            {to-date? : De-activate route data to this date}
+                            {--p|purge : Purge activation status entry too}';
 
     /**
      * The console command description.
@@ -63,6 +64,7 @@ class DeactivateRoutedata extends Command
         $this->setupProgressBar();
         $this->progressBar->start();
         $this->activator
+            ->purge($this->option('purge'))
             ->onDay(function ($date) {
                 $this->progressBar->advance();
                 $this->progressBar->setMessage($date);

@@ -3,6 +3,7 @@
 namespace TromsFylkestrafikk\Netex\Services;
 
 use Closure;
+use DateInterval;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -42,6 +43,11 @@ class RouteActivator extends RouteBase
      * @var bool
      */
     protected $activateMissingOnly = false;
+
+    /**
+     * @var bool
+     */
+    protected $purgeStatus = false;
 
     /**
      * @var \TromsFylkestrafikk\Netex\Services\DbBulkInsert
@@ -151,6 +157,18 @@ class RouteActivator extends RouteBase
     }
 
     /**
+     * Purge activation status. Only useful during deactivation.
+     *
+     * @param bool $value
+     * @return $this
+     */
+    public function purge($value = true): self
+    {
+        $this->purgeStatus = $value;
+        return $this;
+    }
+
+    /**
      * @return string|null
      */
     public function getFromDate(): string|null
@@ -240,7 +258,11 @@ class RouteActivator extends RouteBase
                 'count' => null,
             ])->save();
             $this->destroyActiveDate($dateStr);
-            $status->fill(['status' => 'empty'])->save();
+            if ($this->purgeStatus) {
+                $status->delete();
+            } else {
+                $status->fill(['status' => 'empty'])->save();
+            }
             $this->dayCount++;
             $this->invoke($this->dayCallback, $dateStr, 'deactivated');
             $date->addDay();
@@ -258,17 +280,17 @@ class RouteActivator extends RouteBase
     public function activateDate($date): self
     {
         // @var ActiveStatus $status
-        $status = ActiveStatus::firstOrNew(['id' => $date]);
-        $status->fill([
+        $status = ActiveStatus::firstOrNew(['id' => $date], [
             'import_id' => $this->import->id,
             'status' => 'incomplete',
-        ])->save();
+        ]);
         $this->assertServices();
         $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
         $prevCallCount = $this->callDumper->getRecordsWritten();
         if ($this->activationRequired($status)) {
             $this->destroyActiveDate($date)->buildActiveDate($date);
             $status->fill([
+                'import_id' => $this->import->id,
                 'journeys' => $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
                 'calls' => $this->callDumper->getRecordsWritten() - $prevCallCount,
             ]);
@@ -284,6 +306,40 @@ class RouteActivator extends RouteBase
         $this->dayCount++;
         $this->invoke($this->dayCallback, $date, $this->dayActivationStatus);
         return $this;
+    }
+
+    /**
+     * True if all days from today to configured period is activated
+     *
+     * @return bool
+     */
+    public function isActive(): bool
+    {
+        $date = today();
+        $toDate = today()->add(new DateInterval(config('netex.activation_period')));
+        $stats = ActiveStatus::where('id', '>=', $date->format('Y-m-d'))
+            ->where('id', '<=', $toDate->format('Y-m-d'))
+            ->get()
+            ->keyBy('id');
+
+        while ($date <= $toDate) {
+            $dateStr = $date->format('Y-m-d');
+            if (empty($stats[$dateStr])) {
+                Log::debug(sprintf("Day: %s, missing", $dateStr));
+                return false;
+            }
+            Log::debug(sprintf(
+                "Day: %s, Status: %s, Set: %d",
+                $dateStr,
+                $stats[$dateStr]->status,
+                $stats[$dateStr]->import_id
+            ));
+            if ($stats[$dateStr]->status !== 'activated' || $stats[$dateStr]->import_id !== $this->import->id) {
+                return false;
+            }
+            $date->addDay();
+        }
+        return true;
     }
 
     /**
@@ -323,18 +379,23 @@ class RouteActivator extends RouteBase
     protected function activationRequired(ActiveStatus $status): bool
     {
         if ($this->forceActivation) {
-            $this->dayActivationStatus = 'forced';
+            $this->dayActivationStatus = 'activated: forced';
             return true;
         }
         if ($status->status !== 'activated') {
+            $this->dayActivationStatus = "activated: was {$status->status}";
             return true;
+        }
+        if ($status->import_id === $this->import->id) {
+            $this->dayActivationStatus = 'skipped: already activated for this set';
+            return false;
         }
         if ($this->activateMissingOnly && $this->activeJourneys($status->id)) {
             $this->dayActivationStatus = 'skipped: data exists';
             return false;
         }
         $differ = $this->activationDiffer($status->id);
-        $this->dayActivationStatus = $differ ? 'activated' : 'skipped: not modified';
+        $this->dayActivationStatus = $differ ? 'activated: modified' : 'skipped: not modified';
         return $differ;
     }
 
