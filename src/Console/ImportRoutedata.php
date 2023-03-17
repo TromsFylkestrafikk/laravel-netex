@@ -209,8 +209,12 @@ class ImportRoutedata extends Command
         if (!$this->linesProcessed || !$this->parser->availableFrom || !$this->parser->availableTo) {
             throw new Exception('Imported route set is missing critical data.');
         }
-        $this->import->available_from = new Carbon($this->parser->availableFrom);
-        $this->import->available_to =  new Carbon($this->parser->availableTo);
+        $this->lpInfo("Version is " . $this->parser->version);
+        $this->import->fill([
+            'available_from' => new Carbon($this->parser->availableFrom),
+            'available_to' =>  new Carbon($this->parser->availableTo),
+            'version' => $this->parser->version,
+        ])->save();
         $this->import->save();
     }
 }

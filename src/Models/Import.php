@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id Incremental import ID.
  * @property string $path Path to raw XML set relative to netex disk.
  * @property string|null $md5 MD5 sum of entire set
+ * @property string|null $version Version attached to route set, if present
  * @property int $size Collected size of XMLs in route set
  * @property int $files Number of XMLs in route set
  * @property string|null $available_from Route set vailability from date
@@ -20,6 +21,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $message Message of what failed during import
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \TromsFylkestrafikk\Netex\Models\ActiveStatus> $activStates
+ * @property-read int|null $activ_states_count
  * @method static Builder|Import imported()
  * @method static Builder|Import newModelQuery()
  * @method static Builder|Import newQuery()
@@ -35,6 +38,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static Builder|Import wherePath($value)
  * @method static Builder|Import whereSize($value)
  * @method static Builder|Import whereUpdatedAt($value)
+ * @method static Builder|Import whereVersion($value)
  * @mixin \Eloquent
  */
 class Import extends Model
@@ -44,6 +48,7 @@ class Import extends Model
     protected $fillable = [
         'path',
         'md5',
+        'version',
         'size',
         'files',
         'available_from',

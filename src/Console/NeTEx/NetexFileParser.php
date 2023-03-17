@@ -25,6 +25,7 @@ class NetexFileParser
     public $destinationDisplays = [];
     public $stopAssignments = [];
     public $vehicleSchedules = [];
+    public $version = null;
 
     // XML data
     public $lineDescription = '';
@@ -88,6 +89,12 @@ class NetexFileParser
                     case 'RoutePoint':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
                         $id = $this->trimID($sxml->attributes()->id);
+                        // Hack, but pick a random element and get the Trapeze
+                        // export version of this route set.
+                        if ($this->version === null) {
+                            Log::debug('Got route point: ' . $sxml->attributes()->version);
+                            $this->version = (string) $sxml->attributes()->version;
+                        }
                         $this->routePoints[$id]['ProjectedPointRef'] = (string) $sxml->projections->PointProjection->ProjectedPointRef->attributes()->ref;
                         break;
 
