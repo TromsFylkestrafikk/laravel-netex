@@ -117,9 +117,10 @@ class RouteActivator extends RouteBase
         $this->import = $import;
         $fromDate = $this->sanitizeDate($fromDate);
         $toDate = $this->sanitizeDate($toDate);
-        $dates = DB::table($set === 'active' ? 'netex_active_journeys' : 'netex_calendar')
-            ->selectRaw('min(date) as fromDate')
-            ->selectRaw('max(date) as toDate')
+        $dateCol = $set === 'active' ? 'id' : 'date';
+        $dates = DB::table($set === 'active' ? 'netex_active_status' : 'netex_calendar')
+            ->selectRaw("min($dateCol) as fromDate")
+            ->selectRaw("max($dateCol) as toDate")
             ->first();
         $this->fromDate = $fromDate ? max($fromDate, $dates->fromDate) : $dates->fromDate;
         $this->toDate = $toDate ? min($toDate, $dates->toDate) : $dates->toDate;
@@ -150,17 +151,17 @@ class RouteActivator extends RouteBase
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getFromDate(): string
+    public function getFromDate(): string|null
     {
         return $this->fromDate;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getToDate(): string
+    public function getToDate(): string|null
     {
         return $this->toDate;
     }

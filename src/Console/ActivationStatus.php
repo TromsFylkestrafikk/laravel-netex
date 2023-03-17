@@ -78,6 +78,8 @@ class ActivationStatus extends Command
         $this->overallStatus();
         if ($this->option('table')) {
             $this->detailedStatus();
+        } else {
+            $this->listedStatus();
         }
         return self::SUCCESS;
     }
@@ -90,6 +92,43 @@ class ActivationStatus extends Command
         if ($missing) {
             $this->info(sprintf("Missing days: \n\t- %s", implode("\n\t- ", $missing)), 'v');
         }
+    }
+
+    /**
+     * Aggregated list of activation statuses
+     */
+    protected function listedStatus(): void
+    {
+        $stats = ActiveStatus::orderBy('id')->get()->keyBy('id');
+        $current = new Carbon($this->activeSet->getFromDate());
+        $end = new Carbon($this->activeSet->getToDate());
+        $prevSet = null;
+        $prevStatus = null;
+        $startDate = null;
+        $days = 0;
+        $headers = ['Date', 'Route set', 'Status', 'Days forward'];
+        $rows = [];
+        while ($current < $end) {
+            $date = $current->format('Y-m-d');
+            $set = empty($stats[$date]) ? '<empty>' : $stats[$date]->import_id;
+            $status = empty($stats[$date]) ? '<empty>' : $stats[$date]->status;
+            if ($prevSet !== $set || $prevStatus !== $status) {
+                if ($days > 0) {
+                    $rows[] = [$startDate, $prevSet, $prevStatus, $days];
+                }
+                $startDate = $date;
+                $days = 1;
+            } else {
+                $days++;
+            }
+            $prevSet = $set;
+            $prevStatus = $status;
+            $current->addDay();
+        }
+        if ($days > 0) {
+            $rows[] = [$startDate, $prevSet, $prevStatus, $days];
+        }
+        $this->table($headers, $rows);
     }
 
     /**
@@ -113,7 +152,7 @@ class ActivationStatus extends Command
             'status',
             'created_at',
             'updated_at'
-        )->orderBy('id')->get()->toArray());
+        )->orderBy('id')->get()->keyBy('id')->toArray());
     }
 
     /**
@@ -133,22 +172,15 @@ class ActivationStatus extends Command
     {
         $current = new Carbon($this->activeSet->getFromDate());
         $end = new Carbon($this->activeSet->getToDate());
+        $stats = ActiveStatus::where('id', '>=', $current)->where('id', '<=', $end)->get()->keyBy('id');
         $missing = [];
         while ($current < $end) {
-            if (!$this->activeJourneys($current)) {
-                $missing[] = $current->format('Y-m-d');
+            $date = $current->format('Y-m-d');
+            if (empty($stats[$date]) || $stats[$date]->status !== 'activated') {
+                $missing[] = $date;
             }
             $current->addDay();
         }
         return $missing;
-    }
-
-    /**
-     * @param string $date
-     * @return int
-     */
-    protected function activeJourneys(string $date): int
-    {
-        return $date ? ActiveJourney::whereDate('date', $date)->count() : ActiveJourney::count();
     }
 }
