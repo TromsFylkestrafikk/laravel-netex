@@ -17,8 +17,8 @@ class DeactivateRoutedata extends Command
      * @var string
      */
     protected $signature = 'netex:deactivate
-                            {from-date? : De-activate data from this date}
-                            {to-date? : De-activate route data to this date}
+                            {from-date? : Deactivate data from this date}
+                            {to-date? : Deactivate route data to this date}
                             {--o|old : Remove old activation data}
                             {--p|purge : Purge activation status entry too}';
 
@@ -27,7 +27,7 @@ class DeactivateRoutedata extends Command
      *
      * @var string
      */
-    protected $description = 'De-activate route data.';
+    protected $description = 'Deactivate route data.';
 
     /**
      * @var Import
@@ -66,7 +66,7 @@ class DeactivateRoutedata extends Command
             return $initStatus;
         }
         $this->info(sprintf(
-            "De-activating routedata between %s and %s",
+            "Deactivating routedata between %s and %s",
             $this->activator->getFromDate(),
             $this->activator->getToDate()
         ));
@@ -97,14 +97,6 @@ class DeactivateRoutedata extends Command
             $toDate = $this->argument('to-date');
         }
         $this->activator = new RouteActivator($this->import, $fromDate, $toDate, 'active');
-        if ($this->activator->getFromDate() > $this->activator->getToDate()) {
-            $this->error(sprintf(
-                'From date (%s) cannot be after To date (%s)',
-                $this->activator->getFromDate(),
-                $this->activator->getToDate()
-            ));
-            return self::FAILURE;
-        }
         return self::SUCCESS;
     }
 }
