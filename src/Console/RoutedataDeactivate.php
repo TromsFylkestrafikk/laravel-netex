@@ -7,7 +7,7 @@ use TromsFylkestrafikk\Netex\Console\Traits\ActivateProgress;
 use TromsFylkestrafikk\Netex\Models\Import;
 use TromsFylkestrafikk\Netex\Services\RouteActivator;
 
-class DeactivateRoutedata extends Command
+class RoutedataDeactivate extends Command
 {
     use ActivateProgress;
 
@@ -16,7 +16,7 @@ class DeactivateRoutedata extends Command
      *
      * @var string
      */
-    protected $signature = 'netex:deactivate
+    protected $signature = 'netex:routedata-deactivate
                             {from-date? : Deactivate data from this date}
                             {to-date? : Deactivate route data to this date}
                             {--o|old : Remove old activation data}

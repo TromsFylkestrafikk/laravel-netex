@@ -10,14 +10,14 @@ use TromsFylkestrafikk\Netex\Models\ActiveStatus;
 use TromsFylkestrafikk\Netex\Models\Import;
 use TromsFylkestrafikk\Netex\Services\RouteActivator;
 
-class ActivationStatus extends Command
+class RoutedataStatus extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'netex:status
+    protected $signature = 'netex:routedata-status
                             {date? : Show status for this date}
                             {--d|detail : Show detailed day-to-day table status}';
 
@@ -26,7 +26,7 @@ class ActivationStatus extends Command
      *
      * @var string
      */
-    protected $description = 'Show status of current route data';
+    protected $description = 'Show activation status of current route data';
 
     /**
      * @var Import

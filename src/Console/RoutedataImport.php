@@ -13,7 +13,7 @@ use TromsFylkestrafikk\Netex\Models\Import;
 use TromsFylkestrafikk\Netex\Services\StopsActivator;
 use TromsFylkestrafikk\Netex\Services\RouteSet;
 
-class ImportRoutedata extends Command
+class RoutedataImport extends Command
 {
     use LogAndPrint;
 
@@ -22,7 +22,7 @@ class ImportRoutedata extends Command
      *
      * @var string
      */
-    protected $signature = 'netex:import-routedata
+    protected $signature = 'netex:routedata-import
                             {path : Path to route set directory, relative to netex disk root}
                             {main : Filename of shared NeTEx XML data}
                             {--f|force : Force update, even if not modified}
@@ -33,7 +33,7 @@ class ImportRoutedata extends Command
      *
      * @var string
      */
-    protected $description = "Import route data from XML files in NeTEx format.\n";
+    protected $description = "Import route data from XML files in NeTEx format.";
 
     /**
      * Progress bar

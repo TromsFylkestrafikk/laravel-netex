@@ -9,7 +9,7 @@ use TromsFylkestrafikk\Netex\Console\Traits\ActivateProgress;
 use TromsFylkestrafikk\Netex\Models\Import;
 use TromsFylkestrafikk\Netex\Services\RouteActivator;
 
-class ActivateRoutedata extends Command
+class RoutedataActivate extends Command
 {
     use ActivateProgress;
 
@@ -18,7 +18,7 @@ class ActivateRoutedata extends Command
      *
      * @var string
      */
-    protected $signature = 'netex:activate
+    protected $signature = 'netex:routedata-activate
                             {from-date? : Activate data from this date}
                             {to-date? : Activate route data up until this date}
                             {--f|force : Force re-activation even if activation already exists}

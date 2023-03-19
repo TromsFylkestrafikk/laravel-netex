@@ -28,7 +28,7 @@ class ImportStops extends Command
      *
      * @var string
      */
-    protected $description = "Import stop places from XML file in NeTEx format.\n";
+    protected $description = "Import stop places from XML file in NeTEx format.";
 
     /**
      * Progress bar
