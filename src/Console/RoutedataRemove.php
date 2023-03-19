@@ -3,9 +3,9 @@
 namespace TromsFylkestrafikk\Netex\Console;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use TromsFylkestrafikk\Netex\Models\Import;
+use TromsFylkestrafikk\Netex\Models\ActiveStatus;
 use TromsFylkestrafikk\Netex\Console\Traits\LogAndPrint;
 
 class RoutedataRemove extends Command
@@ -26,7 +26,7 @@ class RoutedataRemove extends Command
      *
      * @var string
      */
-    protected $description = 'Remove route data no longer in use.';
+    protected $description = 'Remove raw xml route data no longer in use.';
 
     /**
      * Execute the console command.
@@ -44,7 +44,37 @@ class RoutedataRemove extends Command
             }
             return $this->removeSet($import) ? self::SUCCESS : self::FAILURE;
         }
+        $this->removeUnused();
         return Command::SUCCESS;
+    }
+
+    /**
+     * Search for unused route data and remove them.
+     *
+     * That is, all route sets that isn't part of activated sets, and the last
+     * set.
+     *
+     * @return bool
+     */
+    protected function removeUnused(): bool
+    {
+        $last = Import::latest()->first();
+        if (!$last) {
+            $this->lpNotice("No route set found. Aborting");
+            return false;
+        }
+        $targets = Import::whereNotIn(
+            'id',
+            ActiveStatus::select('import_id')
+                ->distinct()
+                ->pluck('import_id')
+                ->push($last->id)
+                ->unique()
+        )->get();
+        foreach ($targets as $import) {
+            $this->removeSet($import);
+        }
+        return true;
     }
 
     /**
