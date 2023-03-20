@@ -117,8 +117,8 @@ class RoutedataStatus extends Command
         $rows = [];
         while ($current < $end) {
             $date = $current->format('Y-m-d');
-            $set = empty($stats[$date]) ? '<empty>' : $stats[$date]->import_id;
-            $status = empty($stats[$date]) ? '<empty>' : $stats[$date]->status;
+            $set = empty($stats[$date]) ? '<missing>' : $stats[$date]->import_id;
+            $status = empty($stats[$date]) ? '<missing>' : $stats[$date]->status;
             if ($prevSet !== $set || $prevStatus !== $status) {
                 if ($days > 0) {
                     $rows[] = [$startDate, $prevSet, $prevStatus, $days];

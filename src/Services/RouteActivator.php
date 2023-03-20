@@ -329,15 +329,8 @@ class RouteActivator extends RouteBase
         while ($date <= $toDate) {
             $dateStr = $date->format('Y-m-d');
             if (empty($stats[$dateStr])) {
-                Log::debug(sprintf("Day: %s, missing", $dateStr));
                 return false;
             }
-            Log::debug(sprintf(
-                "Day: %s, Status: %s, Set: %d",
-                $dateStr,
-                $stats[$dateStr]->status,
-                $stats[$dateStr]->import_id
-            ));
             if ($stats[$dateStr]->status !== 'activated' || $stats[$dateStr]->import_id !== $this->import->id) {
                 return false;
             }
@@ -392,6 +385,11 @@ class RouteActivator extends RouteBase
         }
         if ($status->import_id === $this->import->id) {
             $this->dayActivationStatus = 'skipped: already activated for this set';
+            return false;
+        }
+        $otherSet = Import::find($status->import_id);
+        if ($otherSet && $otherSet->md5 === $this->import->md5) {
+            $this->dayActivationStatus = 'skipped: route sets are equal';
             return false;
         }
         if ($this->activateMissingOnly && $this->activeJourneys($status->id)) {

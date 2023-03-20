@@ -2,11 +2,12 @@
 
 namespace TromsFylkestrafikk\Netex\Console\NeTEx;
 
+use DOMDocument;
+use DateInterval;
+use DateTime;
+use Exception;
 use Illuminate\Support\Facades\Log;
 use XMLReader;
-use DOMDocument;
-use DateTime;
-use DateInterval;
 
 class NetexFileParser
 {
@@ -53,7 +54,7 @@ class NetexFileParser
      */
     public function parseMainXmlFile()
     {
-        Log::debug('Parsing main NeTEx file ' . $this->path);
+        Log::debug("Parsing main NeTEx file '$this->path': ... ");
 
         $doc = new DOMDocument('1.0', 'UTF-8');
         $xml = new XMLReader();
@@ -92,7 +93,6 @@ class NetexFileParser
                         // Hack, but pick a random element and get the Trapeze
                         // export version of this route set.
                         if ($this->version === null) {
-                            Log::debug('Got route point: ' . $sxml->attributes()->version);
                             $this->version = (string) $sxml->attributes()->version;
                         }
                         $this->routePoints[$id]['ProjectedPointRef'] = (string) $sxml->projections->PointProjection->ProjectedPointRef->attributes()->ref;
@@ -197,9 +197,8 @@ class NetexFileParser
                 }
             }
         }
-
         $xml->close();
-        Log::debug('Main NeTEx file closed');
+        Log::debug("Parsing main NeTEx file '$this->path': DONE");
     }
 
     /**
@@ -207,7 +206,7 @@ class NetexFileParser
      */
     public function generateCalendar()
     {
-        Log::debug('Generating calendar');
+        Log::debug('Generating calendar: ...');
 
         foreach ($this->dayTypes as $id => $dt) {
             $calendarID = (string) $id;
@@ -260,8 +259,7 @@ class NetexFileParser
                 }
             }
         }
-
-        Log::debug(count($this->calendar) . ' unique calendar rows generated');
+        Log::debug(sprintf("Generating calendar: %d unique calendar rows generated", count($this->calendar)));
     }
 
     /**
@@ -277,7 +275,7 @@ class NetexFileParser
         $this->journeyPatterns = [];
         $this->vehicleJourneys = [];
 
-        Log::debug('Parsing NeTEx line file ' . $filename);
+        Log::debug("Parsing NeTEx line file '$filename' ...");
 
         $doc = new DOMDocument('1.0', 'UTF-8');
         $xml = new XMLReader();
@@ -390,7 +388,7 @@ class NetexFileParser
         }
 
         $xml->close();
-        Log::debug('Line XML file closed');
+        Log::debug("Parsing NeTEx line file '$filename': DONE");
     }
 
     /**
@@ -433,8 +431,7 @@ class NetexFileParser
         $end = DateTime::createFromFormat('Y-m-d\TH:i:s', $to);
 
         if (!$start || !$end) {
-            Log::error('Invalid time period: ' . $from . ' - ' . $to);
-            die("Time period error! FROM: " . $from . ' TO: ' . $to . PHP_EOL);
+            throw new Exception("Time period error! FROM: " . $from . ' TO: ' . $to);
         }
 
         $timestamp = $start->getTimestamp();
