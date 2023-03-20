@@ -58,12 +58,16 @@ class RoutedataDeactivate extends Command
     {
         $this->import = Import::latest()->first();
         if (!$this->import) {
-            $this->error('Import some route data before deactivating');
+            $this->error('Deactivate: Import some route data before deactivating');
             return self::FAILURE;
         }
         $initStatus = $this->initActivator();
         if ($initStatus !== self::SUCCESS) {
             return $initStatus;
+        }
+        if ($this->activator->getFromDate() > $this->activator->getToDate()) {
+            $this->info('Deactivate: Nothing to do');
+            return self::SUCCESS;
         }
         $this->info(sprintf(
             "Deactivating routedata between %s and %s",
