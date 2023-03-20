@@ -60,7 +60,7 @@ class RoutedataStatus extends Command
      */
     public function handle(): int
     {
-        $this->import = Import::latest()->first();
+        $this->import = Import::imported()->latest()->first();
         if (!$this->import) {
             $this->error('Import some route data before deactivating');
             return self::FAILURE;

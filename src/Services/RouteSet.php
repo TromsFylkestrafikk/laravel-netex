@@ -131,6 +131,8 @@ class RouteSet
     }
 
     /**
+     * Get name of shared XML data file.
+     *
      * @return string
      */
     public function getSharedFile(): string
@@ -145,7 +147,7 @@ class RouteSet
      */
     public function getSharedFilePath(): string
     {
-        return $this->getFilePath($this->sharedFile);
+        return $this->getFilePath($this->getSharedFile());
     }
 
     /**

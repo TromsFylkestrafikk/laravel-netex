@@ -388,8 +388,7 @@ class RouteActivator extends RouteBase
             $this->dayActivationStatus = 'skipped: already activated for this set';
             return false;
         }
-        $otherSet = Import::imported()->find($status->import_id);
-        if ($otherSet && $otherSet->md5 === $this->import->md5) {
+        if ($status->import && $status->import->md5 === $this->import->md5) {
             $this->dayActivationStatus = 'skipped: route sets are equal';
             return false;
         }
