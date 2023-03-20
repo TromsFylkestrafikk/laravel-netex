@@ -2,15 +2,17 @@
 
 namespace TromsFylkestrafikk\Netex\Console\NeTEx;
 
-use Illuminate\Support\Facades\Log;
-use XMLReader;
 use DOMDocument;
-use DateTime;
 use DateInterval;
+use DateTime;
+use Exception;
+use XMLReader;
 
 class NetexFileParser
 {
     public $description = '';
+    public $availableFrom = null;
+    public $availableTo = null;
     public $operators = [];
     public $scheduledStopPoints = [];
     public $operatingPeriods = [];
@@ -23,6 +25,7 @@ class NetexFileParser
     public $destinationDisplays = [];
     public $stopAssignments = [];
     public $vehicleSchedules = [];
+    public $version = null;
 
     // XML data
     public $lineDescription = '';
@@ -50,8 +53,6 @@ class NetexFileParser
      */
     public function parseMainXmlFile()
     {
-        Log::debug('Parsing main NeTEx file ' . $this->path);
-
         $doc = new DOMDocument('1.0', 'UTF-8');
         $xml = new XMLReader();
         $xml->open($this->path);
@@ -64,6 +65,11 @@ class NetexFileParser
                         $this->description = $xml->value;
                         break;
 
+                    case 'AvailabilityCondition':
+                        $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
+                        $this->availableFrom = $sxml->FromDate;
+                        $this->availableTo = $sxml->ToDate;
+                        break;
                     case 'Operator':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
                         $id = $this->trimID((string) $sxml->attributes()->id);
@@ -81,6 +87,11 @@ class NetexFileParser
                     case 'RoutePoint':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
                         $id = $this->trimID($sxml->attributes()->id);
+                        // Hack, but pick a random element and get the Trapeze
+                        // export version of this route set.
+                        if ($this->version === null) {
+                            $this->version = (string) $sxml->attributes()->version;
+                        }
                         $this->routePoints[$id]['ProjectedPointRef'] = (string) $sxml->projections->PointProjection->ProjectedPointRef->attributes()->ref;
                         break;
 
@@ -183,23 +194,7 @@ class NetexFileParser
                 }
             }
         }
-
         $xml->close();
-        Log::debug('Main NeTEx file closed');
-    }
-
-    /**
-     * Trim the supplied ID string.
-     *
-     * @param  string  $id
-     *   A string with sections separated by colon (:)
-     * @return  string
-     *   Returns the last section of the input string
-     */
-    private function trimID($id)
-    {
-        $arr = explode(':', $id);
-        return end($arr);
     }
 
     /**
@@ -207,8 +202,6 @@ class NetexFileParser
      */
     public function generateCalendar()
     {
-        Log::debug('Generating calendar');
-
         foreach ($this->dayTypes as $id => $dt) {
             $calendarID = (string) $id;
 
@@ -260,69 +253,6 @@ class NetexFileParser
                 }
             }
         }
-
-        Log::debug(count($this->calendar) . ' unique calendar rows generated');
-    }
-
-    /**
-     * Retrieve active days for the specified time period.
-     *
-     * @param  string  $from
-     *   Date format: Y-m-d\TH:i:s
-     * @param  string  $to
-     *   Date format: Y-m-d\TH:i:s
-     * @param  string  $daysOfWeek
-     *   A string containing at least one of the following keywords:
-     *   Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Weekdays
-     * @return  array
-     *   Date format: Y-m-d
-     */
-    private function getActiveDaysInPeriod($from, $to, $daysOfWeek)
-    {
-        $start = DateTime::createFromFormat('Y-m-d\TH:i:s', $from);
-        $end = DateTime::createFromFormat('Y-m-d\TH:i:s', $to);
-
-        if (!$start || !$end) {
-            Log::error('Invalid time period: ' . $from . ' - ' . $to);
-            die("Time period error! FROM: " . $from . ' TO: ' . $to . PHP_EOL);
-        }
-
-        $timestamp = $start->getTimestamp();
-        $endTimestamp = $end->getTimestamp();
-        $result = [];
-
-        do {
-            if ($this->isActiveDayOfWeek($timestamp, $daysOfWeek) === true) {
-                array_push($result, date('Y-m-d', $timestamp));
-            }
-
-            $start->add(new DateInterval('P1D'));      // Add one day.
-            $timestamp = $start->getTimestamp();
-        } while ($timestamp < $endTimestamp);
-
-        return $result;
-    }
-
-    /**
-     * Check if a timestamp corresponds to one of the supplied weekdays.
-     *
-     * @param  integer  $timestamp
-     *   A timestamp that represents a weekday.
-     * @param  string  $daysOfWeek
-     *   A string containing at least one of the following keywords:
-     *   Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Weekdays
-     * @return  boolean
-     *   Returns TRUE when a match is found within the supplied list.
-     *   Returns FALSE when no match is found.
-     */
-    private function isActiveDayOfWeek($timestamp, $daysOfWeek)
-    {
-        if (strpos($daysOfWeek, 'Weekdays') !== false) {
-            $daysOfWeek .= 'MondayTuesdayWednesdayThursdayFriday';
-        }
-
-        $day = date("l", $timestamp);
-        return (strpos($daysOfWeek, $day) !== false) ? true : false;
     }
 
     /**
@@ -337,8 +267,6 @@ class NetexFileParser
         $this->routes = [];
         $this->journeyPatterns = [];
         $this->vehicleJourneys = [];
-
-        Log::debug('Parsing NeTEx line file ' . $filename);
 
         $doc = new DOMDocument('1.0', 'UTF-8');
         $xml = new XMLReader();
@@ -451,6 +379,100 @@ class NetexFileParser
         }
 
         $xml->close();
-        Log::debug('Line XML file closed');
+    }
+
+    /**
+     * Reset parsed data.
+     *
+     * @return void
+     */
+    public function reset(): void
+    {
+        unset($this->calendar);
+        unset($this->operatingPeriods);
+        unset($this->dayTypeAssignments);
+        unset($this->dayTypes);
+        unset($this->operators);
+        unset($this->groupOfLines);
+        unset($this->routePoints);
+        unset($this->scheduledStopPoints);
+        unset($this->stopAssignments);
+        unset($this->destinationDisplays);
+        unset($this->serviceLinks);
+        unset($this->vehicleSchedules);
+    }
+
+    /**
+     * Retrieve active days for the specified time period.
+     *
+     * @param  string  $from
+     *   Date format: Y-m-d\TH:i:s
+     * @param  string  $to
+     *   Date format: Y-m-d\TH:i:s
+     * @param  string  $daysOfWeek
+     *   A string containing at least one of the following keywords:
+     *   Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Weekdays
+     * @return  array
+     *   Date format: Y-m-d
+     */
+    protected function getActiveDaysInPeriod($from, $to, $daysOfWeek): array
+    {
+        $start = DateTime::createFromFormat('Y-m-d\TH:i:s', $from);
+        $end = DateTime::createFromFormat('Y-m-d\TH:i:s', $to);
+
+        if (!$start || !$end) {
+            throw new Exception("Time period error! FROM: " . $from . ' TO: ' . $to);
+        }
+
+        $timestamp = $start->getTimestamp();
+        $endTimestamp = $end->getTimestamp();
+        $result = [];
+
+        do {
+            if ($this->isActiveDayOfWeek($timestamp, $daysOfWeek) === true) {
+                array_push($result, date('Y-m-d', $timestamp));
+            }
+
+            $start->add(new DateInterval('P1D'));      // Add one day.
+            $timestamp = $start->getTimestamp();
+        } while ($timestamp < $endTimestamp);
+
+        return $result;
+    }
+
+    /**
+     * Check if a timestamp corresponds to one of the supplied weekdays.
+     *
+     * @param  integer  $timestamp
+     *   A timestamp that represents a weekday.
+     * @param  string  $daysOfWeek
+     *   A string containing at least one of the following keywords:
+     *   Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Weekdays
+     * @return  bool
+     *   Returns TRUE when a match is found within the supplied list.
+     *   Returns FALSE when no match is found.
+     */
+    protected function isActiveDayOfWeek($timestamp, $daysOfWeek): bool
+    {
+        if (strpos($daysOfWeek, 'Weekdays') !== false) {
+            $daysOfWeek .= 'MondayTuesdayWednesdayThursdayFriday';
+        }
+
+        $day = date("l", $timestamp);
+        return (strpos($daysOfWeek, $day) !== false) ? true : false;
+    }
+
+    /**
+     * Trim the supplied ID string.
+     *
+     * @param  string  $id
+     *   A string with sections separated by colon (:)
+     * @return  string
+     *   Returns the last section of the input string
+     */
+    protected function trimID($id): string
+    {
+        $arr = explode(':', $id);
+        return end($arr);
     }
 }

@@ -28,14 +28,22 @@ Run the necessary migrations:
 php artisan migrate
 ```
 
+Publish the required config:
+```
+php artisan vendor:publish --tag=netex-config
+```
+
 ### Usage
 
 The following artisan commands are included for import of NeTEx data:
 - `netex:importstops` – Import stop places from XML file.
-- `netex:importroutedata` – Import route data from XML files.
-- `netex:activate` – Activate route data for quicker db queries.
-- `netex:deactivate` – De-activate route data.
-- `netex:status` – Show overall activation status
+- `netex:routedata-import` – Import route data from XML files.
+- `netex:routedata-activate` – Activate route data for quicker db queries.
+- `netex:routedata-deactivate` – Deactivate route data.
+- `netex:routedata-list` – List seen/stored sets of NeTEx route data.
+- `netex:routedata-remove` – Remove unused or specified route sets.
+- `netex:routedata-status` – Show overall activation status.
+- `netex:sync-active-stops` – Set 'active' flag on stops seen in route set.
 
 See `php artisan <COMMAND> --help` for further usage.
 

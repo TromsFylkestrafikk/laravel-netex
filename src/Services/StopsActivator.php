@@ -46,7 +46,7 @@ class StopsActivator
         $stopsUpdated = 0;
         $this->progress = 0;
         $this->count = StopAssignment::count();
-        Log::debug("[Netex StopsActivator] De-activation complete. Activating using {$this->count} StopAssignments.");
+        Log::debug("[Netex StopsActivator] Deactivation complete. Activating using {$this->count} StopAssignments.");
         // Get 'seen' stops with regtopp ID.
         $this->callProgress($this->actProgressCb);
         StopAssignment::select(['id', 'quay_ref'])

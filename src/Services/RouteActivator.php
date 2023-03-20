@@ -3,15 +3,23 @@
 namespace TromsFylkestrafikk\Netex\Services;
 
 use Closure;
+use DateInterval;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use TromsFylkestrafikk\Netex\Services\RouteBase;
 use TromsFylkestrafikk\Netex\Models\ActiveJourney;
-use TromsFylkestrafikk\Netex\Models\ActiveCall;
+use TromsFylkestrafikk\Netex\Models\ActiveStatus;
+use TromsFylkestrafikk\Netex\Models\Import;
 
-class RouteActivator
+class RouteActivator extends RouteBase
 {
+    /**
+     * @var \TromsFylkestrafikk\Netex\Models\Import
+     */
+    protected $import;
+
     /**
      * @var string
      */
@@ -23,45 +31,55 @@ class RouteActivator
     protected $toDate;
 
     /**
-     * @var \TromsFylkestrafikk\Netex\Services\DbBulkInsert
+     * Whether to ignore detection of unmodified active data.
+     *
+     * @var bool
      */
-    protected $journeyDumper;
+    protected $forceActivation = false;
+
+    /**
+     * Skip activating days with data present.
+     *
+     * @var bool
+     */
+    protected $activateMissingOnly = false;
+
+    /**
+     * @var bool
+     */
+    protected $purgeStatus = false;
 
     /**
      * @var \TromsFylkestrafikk\Netex\Services\DbBulkInsert
      */
-    protected $callDumper;
+    protected $journeyDumper = null;
+
+    /**
+     * @var \TromsFylkestrafikk\Netex\Services\DbBulkInsert
+     */
+    protected $callDumper = null;
+
+    /**
+     * @var \TromsFylkestrafikk\Netex\Services\RouteSetDiffDetector
+     */
+    protected $diffDetector = null;
 
     /**
      * Number of days processed.
      *
      * @var int
      */
-    protected $dayCount;
-
-    /**
-     * Flipped version of ActiveJourney::fillable.
-     *
-     * @var array
-     */
-    protected $journeyFillable;
-
-    /**
-     * Flipped version of ActiveCall::fillable.
-     *
-     * @var array
-     */
-    protected $callFillable;
+    protected $dayCount = 0;
 
     /**
      * @var \Closure|null
      */
-    protected $dayCallback;
+    protected $dayCallback = null;
 
     /**
      * @var \Closure|null
      */
-    protected $journeyCallback;
+    protected $journeyCallback = null;
 
     /**
      * Keep track of seen call IDs to detect duplicates.
@@ -78,40 +96,118 @@ class RouteActivator
     protected $aJourneyIds = [];
 
     /**
+     * Error indicator (e.g. for duplicate journey/call IDs).
+     *
+     * @var bool
+     */
+    protected $hasErrors = false;
+
+    /**
+     * @var string
+     */
+    protected $dayActivationStatus = null;
+
+    /**
      * Create a new command instance.
      *
-     * @param string|null $fromDate
-     * @param string|null $toDate
+     * @param Import $import What route set the activation belongs to
+     * @param string|null $fromDate Activation from date
+     * @param string|null $toDate Activation to date (including)
      * @param string|null $set Either 'active' or 'raw'. Active uses dates found in active tables.
      *
      * @return void
      */
-    public function __construct($fromDate = null, $toDate = null, $set = null)
+    public function __construct(Import $import, $fromDate = null, $toDate = null, $set = null)
     {
+        parent::__construct();
+        $this->import = $import;
         $fromDate = $this->sanitizeDate($fromDate);
         $toDate = $this->sanitizeDate($toDate);
-        $dates = DB::table($set === 'active' ? 'netex_active_journeys' : 'netex_calendar')
-            ->selectRaw('min(date) as fromDate')
-            ->selectRaw('max(date) as toDate')
+        $dateCol = $set === 'active' ? 'id' : 'date';
+        $dates = DB::table($set === 'active' ? 'netex_active_status' : 'netex_calendar')
+            ->selectRaw("min($dateCol) as fromDate")
+            ->selectRaw("max($dateCol) as toDate")
             ->first();
         $this->fromDate = $fromDate ? max($fromDate, $dates->fromDate) : $dates->fromDate;
         $this->toDate = $toDate ? min($toDate, $dates->toDate) : $dates->toDate;
     }
 
     /**
-     * @return string
+     * Force re-activation of existing active data.
+     *
+     * @param bool $value
+     * @return $this
      */
-    public function getFromDate()
+    public function force($value = true): self
+    {
+        $this->forceActivation = $value;
+        return $this;
+    }
+
+    /**
+     * Only activate days with empty data.
+     *
+     * @param bool $value
+     * @return $this
+     */
+    public function missingOnly($value = true): self
+    {
+        $this->activateMissingOnly = $value;
+        return $this;
+    }
+
+    /**
+     * Purge activation status. Only useful during deactivation.
+     *
+     * @param bool $value
+     * @return $this
+     */
+    public function purge($value = true): self
+    {
+        $this->purgeStatus = $value;
+        return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getFromDate(): string|null
     {
         return $this->fromDate;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getToDate()
+    public function getToDate(): string|null
     {
         return $this->toDate;
+    }
+
+    /**
+     * Add handler for completing a full day of vehicle journeys.
+     *
+     * @param Closure $closure
+     *
+     * @return $this
+     */
+    public function onDay(Closure $closure): self
+    {
+        $this->dayCallback = $closure;
+        return $this;
+    }
+
+    /**
+     * Add handler for completing a single journey.
+     *
+     * @param Closure $closure
+     *
+     * @return $this
+     */
+    public function onJourney(Closure $closure): self
+    {
+        $this->journeyCallback = $closure;
+        return $this;
     }
 
     /**
@@ -119,46 +215,18 @@ class RouteActivator
      *
      * @return $this
      */
-    public function activate()
+    public function activate(): self
     {
         $date = new Carbon($this->fromDate);
         $toDate = new Carbon($this->toDate);
 
         Log::info(sprintf("NeTEx: Activating route data between %s and %s", $this->fromDate, $this->toDate));
-        $this->journeyDumper = new DbBulkInsert('netex_active_journeys', 'insertOrIgnore');
-        $this->callDumper = new DbBulkInsert('netex_active_calls', 'insertOrIgnore');
+        $this->assertServices();
         $this->dayCount = 0;
-        $this->callFillable = array_flip((new ActiveCall())->getFillable());
-        $this->journeyFillable = array_flip((new ActiveJourney())->getFillable());
-
-        $prevJourneyCount = 0;
-        $prevCallCount = 0;
         while ($date <= $toDate) {
-            // Reset internal overview of seen IDs
-            $this->callIds = [];
-            $this->aJourneyIds = [];
-            $dateStr = $date->format('Y-m-d');
-            $rawJourneys = $this->getRawJourneys($dateStr);
-            $this->activateJourneys($dateStr, $rawJourneys);
-            $this->dayCount++;
-            // Interim flush to assert the full day is complete, and get the
-            // correct written count.
-            $this->journeyDumper->flush();
-            $this->callDumper->flush();
-            $this->invoke($this->dayCallback, $dateStr);
-            Log::debug(sprintf(
-                "NeTEx: %s: %d journeys and %d calls",
-                $dateStr,
-                $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
-                $this->callDumper->getRecordsWritten() - $prevCallCount,
-            ));
-            $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
-            $prevCallCount = $this->callDumper->getRecordsWritten();
+            $this->activateDate($date->format('Y-m-d'));
             $date->addDay();
         }
-        // Write last prepared records;
-        $this->journeyDumper->flush();
-        $this->callDumper->flush();
         Log::info(sprintf(
             "NeTEx: Activation complete. %d days, %d journeys, %d calls",
             $this->dayCount,
@@ -173,51 +241,103 @@ class RouteActivator
      *
      * @return $this
      */
-    public function deactivate()
+    public function deactivate(): self
     {
         $date = new Carbon($this->fromDate);
         $toDate = new Carbon($this->toDate);
 
         $this->dayCount = 0;
 
-        Log::info(sprintf("NeTEx: De-activating route data between %s and %s", $this->fromDate, $this->toDate));
+        Log::info(sprintf("NeTEx: Deactivating route data between %s and %s", $this->fromDate, $this->toDate));
         while ($date <= $toDate) {
-            DB::table('netex_active_calls', 'call')
-                ->join('netex_active_journeys as journey', 'call.active_journey_id', '=', 'journey.id')
-                ->whereDate('journey.date', $date)->delete();
-            DB::table('netex_active_journeys')->whereDate('date', $date)->delete();
+            $dateStr = $date->format('Y-m-d');
+            $status = ActiveStatus::firstOrNew(['id' => $dateStr], ['import_id' => $this->import->id]);
+            $status->fill([
+                'status' => 'incomplete',
+                'journeys' => null,
+                'count' => null,
+            ])->save();
+            $this->destroyActiveDate($dateStr);
+            if ($this->purgeStatus) {
+                $status->delete();
+            } else {
+                $status->fill(['status' => 'empty'])->save();
+            }
             $this->dayCount++;
-            $this->invoke($this->dayCallback, $date->format('Y-m-d'));
+            $this->invoke($this->dayCallback, $dateStr, 'deactivated');
             $date->addDay();
         }
-        Log::info("NeTEx: De-activating complete");
+        Log::info(sprintf("NeTEx: Deactivation %s", ($this->dayCount > 0) ? 'complete.' : 'skipped.'));
         return $this;
     }
 
     /**
-     * Add handler for completing a full day of vehicle journeys.
+     * Activate a single day.
      *
-     * @param Closure $closure
-     *
+     * @param string $date
      * @return $this
      */
-    public function onDay(Closure $closure)
+    public function activateDate($date): self
     {
-        $this->dayCallback = $closure;
+        // @var ActiveStatus $status
+        $status = ActiveStatus::firstOrNew(['id' => $date], [
+            'import_id' => $this->import->id,
+            'status' => 'incomplete',
+        ]);
+        $this->assertServices();
+        $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
+        $prevCallCount = $this->callDumper->getRecordsWritten();
+        if ($this->activationRequired($status)) {
+            $status->fill(['status' => 'incomplete'])->save();
+            $this->destroyActiveDate($date)->buildActiveDate($date);
+            $status->fill([
+                'import_id' => $this->import->id,
+                'journeys' => $this->journeyDumper->getRecordsWritten() - $prevJourneyCount,
+                'calls' => $this->callDumper->getRecordsWritten() - $prevCallCount,
+            ]);
+        } elseif (!$this->activateMissingOnly) {
+            // We assume ownership of this import if we're sure the content is
+            // equal. The only exception is with self::missingOnly().
+            $status->import_id = $this->import->id;
+        }
+        $status->fill(['status' => 'activated'])->save();
+        Log::debug(sprintf(
+            "NeTEx: %s: %s (%d journeys, %d calls)",
+            $date,
+            $this->dayActivationStatus,
+            $status->journeys,
+            $status->calls,
+        ));
+        $this->dayCount++;
+        $this->invoke($this->dayCallback, $date, $this->dayActivationStatus);
         return $this;
     }
 
     /**
-     * Add handler for completing a single journey.
+     * True if all days from today to configured period is activated
      *
-     * @param Closure $closure
-     *
-     * @return $this
+     * @return bool
      */
-    public function onJourney(Closure $closure)
+    public function isActive(): bool
     {
-        $this->journeyCallback = $closure;
-        return $this;
+        $date = today();
+        $toDate = today()->add(new DateInterval(config('netex.activation_period')));
+        $stats = ActiveStatus::where('id', '>=', $date->format('Y-m-d'))
+            ->where('id', '<=', $toDate->format('Y-m-d'))
+            ->get()
+            ->keyBy('id');
+
+        while ($date <= $toDate) {
+            $dateStr = $date->format('Y-m-d');
+            if (empty($stats[$dateStr])) {
+                return false;
+            }
+            if ($stats[$dateStr]->status !== 'activated' || $stats[$dateStr]->import_id !== $this->import->id) {
+                return false;
+            }
+            $date->addDay();
+        }
+        return true;
     }
 
     /**
@@ -225,44 +345,114 @@ class RouteActivator
      *
      * @return int[]
      */
-    public function summary()
+    public function summary(): array
     {
         return [
             'days' => $this->dayCount,
             'journeys' => $this->journeyDumper->getRecordsWritten(),
             'calls' => $this->callDumper->getRecordsWritten(),
+            'errors' => $this->hasErrors,
         ];
     }
 
-    public function makeCallId(array $callRecord, $journeyRecord)
+    /**
+     * Assert services used for activation is fit for fight.
+     *
+     * @return $this
+     */
+    protected function assertServices(): self
     {
-        return (is_array($journeyRecord)
-                ? $this->makeJourneyId($journeyRecord)
-                : $journeyRecord)
-            . ':'
-            . $callRecord['order'];
+        if ($this->journeyDumper !== null) {
+            return $this;
+        }
+        $this->journeyDumper = new DbBulkInsert('netex_active_journeys', 'insertOrIgnore');
+        $this->callDumper = new DbBulkInsert('netex_active_calls', 'insertOrIgnore');
+        $this->diffDetector = new RouteSetDiffDetector();
+        return $this;
     }
 
     /**
-     * @param mixed[] $journeyRecord
-     *
-     * @return string
+     * @param ActiveStatus $status
      */
-    public function makeJourneyId(array $journeyRecord)
+    protected function activationRequired(ActiveStatus $status): bool
     {
-        return implode(':', [
-            $journeyRecord['date'],
-            $journeyRecord['line_private_code'],
-            $journeyRecord['private_code'],
-        ]);
+        if ($this->forceActivation) {
+            $this->dayActivationStatus = 'activated: forced';
+            return true;
+        }
+        if ($status->status !== 'activated') {
+            $this->dayActivationStatus = "activated: was {$status->status}";
+            return true;
+        }
+        if ($status->import_id === $this->import->id) {
+            $this->dayActivationStatus = 'skipped: already activated for this set';
+            return false;
+        }
+        if ($status->import && $status->import->md5 === $this->import->md5) {
+            $this->dayActivationStatus = 'skipped: route sets are equal';
+            return false;
+        }
+        if ($this->activateMissingOnly && $this->activeJourneys($status->id)) {
+            $this->dayActivationStatus = 'skipped: data exists';
+            return false;
+        }
+        $differ = $this->activationDiffer($status->id);
+        $this->dayActivationStatus = $differ ? 'activated: modified' : 'skipped: not modified';
+        return $differ;
     }
 
-    protected function activateJourneys($date, Collection $rawJourneys)
+    /**
+     * Build the active route data for a given date.
+     *
+     * @param string $date
+     * @return $this
+     */
+    protected function buildActiveDate($date): self
+    {
+        // Reset internal overview of seen IDs
+        $this->callIds = [];
+        $this->aJourneyIds = [];
+        $rawJourneys = self::getRawJourneys($date);
+        $this->activateJourneys($date, $rawJourneys);
+        $this->journeyDumper->flush();
+        $this->callDumper->flush();
+        return $this;
+    }
+
+    /**
+     * @param string $date
+     * @return $this
+     */
+    protected function destroyActiveDate($date): self
+    {
+        DB::table('netex_active_calls', 'call')
+            ->join('netex_active_journeys as journey', 'call.active_journey_id', '=', 'journey.id')
+            ->whereDate('journey.date', $date)->delete();
+        DB::table('netex_active_journeys')->whereDate('date', $date)->delete();
+        return $this;
+    }
+
+    /**
+     * True if core data differ from activated set for given date.
+     *
+     * @param string $dateStr
+     * @return bool True if mismatch
+     */
+    protected function activationDiffer($dateStr): bool
+    {
+        return $this->diffDetector->differ($dateStr);
+    }
+
+    /**
+     * @param string $date
+     * @param Collection $rawJourneys
+     */
+    protected function activateJourneys($date, Collection $rawJourneys): void
     {
         foreach ($rawJourneys as $rawJourney) {
             $jRec = array_intersect_key((array) $rawJourney, $this->journeyFillable);
             $jRec['date'] = $date;
-            $jId = $this->makeJourneyId($jRec);
+            $jId = self::makeJourneyId($jRec);
             if (!empty($this->aJourneyIds[$jId])) {
                 Log::error(sprintf(
                     'NeTEx: Duplicate active journey ID detected: %s. Journey ID: %s (%s)',
@@ -270,6 +460,7 @@ class RouteActivator
                     $jRec['vehicle_journey_id'],
                     $jRec['name']
                 ));
+                $this->hasErrors = true;
                 continue;
             }
             $this->aJourneyIds[$jId] = true;
@@ -280,14 +471,18 @@ class RouteActivator
         }
     }
 
-    protected function activateJourneyCalls(array &$jRec)
+    /**
+     * @param mixed[] $jRec
+     * @return void
+     */
+    protected function activateJourneyCalls(array &$jRec): void
     {
-        $rawCalls = $this->getRawCalls($jRec['vehicle_journey_id']);
+        $rawCalls = self::getRawCalls($jRec['vehicle_journey_id']);
         $callStamp = new Carbon("{$jRec['date']} 04:00:00");
         $prevDestDisplay = $jRec['name'];
         foreach ($rawCalls as $rawCall) {
-            $callStamp = $this->expandCallTime($rawCall, 'arrival_time', $callStamp);
-            $callStamp = $this->expandCallTime($rawCall, 'departure_time', $callStamp);
+            $callStamp = self::expandCallTime($rawCall, 'arrival_time', $callStamp);
+            $callStamp = self::expandCallTime($rawCall, 'departure_time', $callStamp);
             if ($rawCall->destination_display) {
                 $prevDestDisplay = $rawCall->destination_display;
             } else {
@@ -305,40 +500,14 @@ class RouteActivator
     }
 
     /**
-     * Expand a time only ('HH:mm:ss') time format to full date timestamp.
-     *
-     * For calls that passes midnight, we need to keep track of the date and
-     * update it when needed. This updated Carbon timestamp is returned.
-     *
-     * @param \stdClass &$rawCall
-     * @param string $property
-     * @param \Illuminate\Support\Carbon $prevCallStamp
-     *
-     * @return \Illuminate\Support\Carbon
-     */
-    protected function expandCallTime(&$rawCall, $property, $prevCallStamp)
-    {
-        if (!$rawCall->$property) {
-            return $prevCallStamp;
-        }
-        $dateStr = $prevCallStamp->format('Y-m-d');
-        $callStamp = new Carbon("$dateStr {$rawCall->$property}");
-        if ($callStamp < $prevCallStamp) {
-            $callStamp->addDay();
-        }
-        $rawCall->$property = $callStamp->format('Y-m-d H:i:s');
-        return $callStamp;
-    }
-
-    /**
      * Activate (persistent store) a single raw call.
      *
      * @param mixed[] $jRec
      * @param mixed[] $rawCall
      */
-    protected function activateCall(array $jRec, array $rawCall)
+    protected function activateCall(array $jRec, array $rawCall): void
     {
-        $callId = $this->makeCallId($rawCall, $jRec['id']);
+        $callId = self::makeCallId($rawCall, $jRec['id']);
         if (!empty($this->callIds[$callId])) {
             Log::error(sprintf(
                 "NeTEx activation: Duplicate active call detected: %s on journey ID %s. Call time: %s (%s)",
@@ -347,13 +516,14 @@ class RouteActivator
                 $rawCall['call_time'],
                 $rawCall['stop_place_name']
             ));
+            $this->hasErrors = true;
             return;
         }
         $this->callIds[$callId] = true;
         $this->callDumper->addRecord(array_merge(
             array_intersect_key($rawCall, $this->callFillable),
             [
-                'id' => $this->makeCallId($rawCall, $jRec['id']),
+                'id' => self::makeCallId($rawCall, $jRec['id']),
                 'active_journey_id' => $jRec['id'],
                 'line_private_code' => $jRec['line_private_code'],
             ]
@@ -361,69 +531,13 @@ class RouteActivator
     }
 
     /**
-     * Query the raw netex data for a day's journey data
+     * Get number of activated journeys for given day.
      *
      * @param string $date
-     *
-     * @return \Illuminate\Support\Collection
      */
-    protected function getRawJourneys($date)
+    protected function activeJourneys($date): int
     {
-        return DB::table('netex_vehicle_journeys', 'journey')
-            ->select([
-                'journey.id as vehicle_journey_id',
-                'journey.name',
-                'journey.private_code',
-                'route.direction',
-                'journey.journey_pattern_ref',
-                'journey.operator_ref as operator_id',
-                'line.id as line_id',
-                'line.public_code as line_public_code',
-                'line.private_code as line_private_code',
-                'line.name as line_name',
-                'line.transport_mode',
-                'line.transport_submode',
-            ])
-            ->join('netex_journey_patterns as pattern', 'journey.journey_pattern_ref', '=', 'pattern.id')
-            ->join('netex_routes as route', 'pattern.route_ref', 'route.id')
-            ->join('netex_lines as line', 'journey.line_ref', 'line.id')
-            ->whereIn('journey.calendar_ref', function (\Illuminate\Database\Query\Builder $query) use ($date) {
-                $query->select('ref')->from('netex_calendar')->whereDate('date', '=', $date);
-            })
-            ->orderBy('line.private_code')
-            ->orderBy('journey.private_code')
-            ->get();
-    }
-
-    /**
-     * @param string $journeyRef
-     *
-     * @return \Illuminate\Support\Collection
-     */
-    protected function getRawCalls($journeyRef)
-    {
-        $ret = DB::table('netex_passing_times', 'ptime')
-            ->select([
-                'ptime.arrival_time',
-                'ptime.departure_time',
-                'patstop.alighting',
-                'patstop.boarding',
-                'patstop.order',
-                'ddisp.front_text as destination_display',
-                'stopass.quay_ref as stop_quay_id',
-                'quay.privateCode as quay_private_code',
-                'quay.publicCode as quay_public_code',
-                'stop.name as stop_place_name',
-            ])
-            ->join('netex_journey_pattern_stop_point as patstop', 'ptime.journey_pattern_stop_point_ref', '=', 'patstop.id')
-            ->leftJoin('netex_destination_displays as ddisp', 'patstop.destination_display_ref', '=', 'ddisp.id')
-            ->join('netex_stop_assignments as stopass', 'patstop.stop_point_ref', '=', 'stopass.id')
-            ->join('netex_stop_quay as quay', 'stopass.quay_ref', '=', 'quay.id')
-            ->join('netex_stop_place as stop', 'quay.stop_place_id', '=', 'stop.id')
-            ->where('ptime.vehicle_journey_ref', '=', $journeyRef)
-            ->orderBy('patstop.order')
-            ->get();
-        return $ret;
+        return ActiveJourney::where('date', $date)->count();
     }
 
     /**
@@ -432,7 +546,7 @@ class RouteActivator
      * @param string|null $dateStr
      * @return string|null
      */
-    protected function sanitizeDate($dateStr = null)
+    protected function sanitizeDate($dateStr = null): string|null
     {
         return $dateStr ? (new Carbon($dateStr))->format('Y-m-d') : null;
     }
@@ -444,7 +558,7 @@ class RouteActivator
      *
      * @param \Closure $callback
      */
-    protected function invoke(Closure $callback = null)
+    protected function invoke(Closure $callback = null): void
     {
         if (is_callable($callback)) {
             call_user_func_array($callback, array_slice(func_get_args(), 1));

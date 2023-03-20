@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Added
+- Route sets now have overall import status, and per day activation
+  status.
+- Several new artisan commands to administer sets and activation.
+
+### Changed
+- Route set related artisan commands have been renamed to a shared
+  `netex:routedata-` prefix
+
 ### Fixed
 - Activation will not choke on duplicate journeys/calls in route set.
 - Increased length of name* related columns

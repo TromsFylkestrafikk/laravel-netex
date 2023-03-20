@@ -3,11 +3,13 @@
 namespace TromsFylkestrafikk\Netex;
 
 use Illuminate\Support\ServiceProvider;
-use TromsFylkestrafikk\Netex\Console\ActivationStatus;
-use TromsFylkestrafikk\Netex\Console\ActivateRoutedata;
-use TromsFylkestrafikk\Netex\Console\ImportRouteData;
-use TromsFylkestrafikk\Netex\Console\DeactivateRoutedata;
 use TromsFylkestrafikk\Netex\Console\ImportStops;
+use TromsFylkestrafikk\Netex\Console\RoutedataActivate;
+use TromsFylkestrafikk\Netex\Console\RoutedataDeactivate;
+use TromsFylkestrafikk\Netex\Console\RoutedataImport;
+use TromsFylkestrafikk\Netex\Console\RoutedataList;
+use TromsFylkestrafikk\Netex\Console\RoutedataRemove;
+use TromsFylkestrafikk\Netex\Console\RoutedataStatus;
 use TromsFylkestrafikk\Netex\Console\SyncActiveStops;
 use TromsFylkestrafikk\Netex\Services\StopsActivator;
 
@@ -15,6 +17,7 @@ class NetexServiceProvider extends ServiceProvider
 {
     public function boot()
     {
+        $this->publishConfig();
         $this->setupMigrations();
         $this->setupConsoleCommands();
     }
@@ -22,6 +25,15 @@ class NetexServiceProvider extends ServiceProvider
     public function register()
     {
         $this->bindServices();
+    }
+
+    protected function publishConfig()
+    {
+        if ($this->app->runningInConsole()) {
+            $this->publishes([
+                __DIR__ . '/../config/netex.php' => config_path('netex.php'),
+            ], ['netex', 'config', 'netex-config']);
+        }
     }
 
     /**
@@ -46,11 +58,13 @@ class NetexServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->commands([
-                ActivationStatus::class,
-                ActivateRoutedata::class,
-                DeactivateRoutedata::class,
                 ImportStops::class,
-                ImportRouteData::class,
+                RoutedataActivate::class,
+                RoutedataDeactivate::class,
+                RoutedataImport::class,
+                RoutedataList::class,
+                RoutedataRemove::class,
+                RoutedataStatus::class,
                 SyncActiveStops::class,
             ]);
         }

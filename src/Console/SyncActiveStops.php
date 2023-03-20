@@ -52,7 +52,7 @@ class SyncActiveStops extends Command
         $activator
             ->withDeactProgress($this->stopProgressFactory(
                 $this->output->createProgressBar(),
-                "De-activating existing stops."
+                "Deactivating existing stops."
             ))
             ->withActProgress($this->stopProgressFactory(
                 $this->output->createProgressBar(),
