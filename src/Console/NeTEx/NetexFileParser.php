@@ -6,7 +6,6 @@ use DOMDocument;
 use DateInterval;
 use DateTime;
 use Exception;
-use Illuminate\Support\Facades\Log;
 use XMLReader;
 
 class NetexFileParser
@@ -54,8 +53,6 @@ class NetexFileParser
      */
     public function parseMainXmlFile()
     {
-        Log::debug("Parsing main NeTEx file '$this->path': ... ");
-
         $doc = new DOMDocument('1.0', 'UTF-8');
         $xml = new XMLReader();
         $xml->open($this->path);
@@ -198,7 +195,6 @@ class NetexFileParser
             }
         }
         $xml->close();
-        Log::debug("Parsing main NeTEx file '$this->path': DONE");
     }
 
     /**
@@ -206,8 +202,6 @@ class NetexFileParser
      */
     public function generateCalendar()
     {
-        Log::debug('Generating calendar: ...');
-
         foreach ($this->dayTypes as $id => $dt) {
             $calendarID = (string) $id;
 
@@ -259,7 +253,6 @@ class NetexFileParser
                 }
             }
         }
-        Log::debug(sprintf("Generating calendar: %d unique calendar rows generated", count($this->calendar)));
     }
 
     /**
@@ -274,8 +267,6 @@ class NetexFileParser
         $this->routes = [];
         $this->journeyPatterns = [];
         $this->vehicleJourneys = [];
-
-        Log::debug("Parsing NeTEx line file '$filename' ...");
 
         $doc = new DOMDocument('1.0', 'UTF-8');
         $xml = new XMLReader();
@@ -388,7 +379,6 @@ class NetexFileParser
         }
 
         $xml->close();
-        Log::debug("Parsing NeTEx line file '$filename': DONE");
     }
 
     /**

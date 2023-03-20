@@ -2,12 +2,13 @@
 
 namespace TromsFylkestrafikk\Netex\Console\NeTEx;
 
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use TromsFylkestrafikk\Netex\Services\DbBulkInsert;
 
 class NetexDatabase
 {
+    protected $stats = [];
+
     /**
      * Constructor.
      */
@@ -33,19 +34,6 @@ class NetexDatabase
         $this->truncateTable('netex_routes');
         $this->truncateTable('netex_route_point_sequence');
         $this->truncateTable('netex_lines');
-
-        Log::debug('All NeTEx route data tables truncated.');
-    }
-
-    /**
-     * Truncate database table.
-     *
-     * @param  string  $name
-     *   The table's name
-     */
-    protected function truncateTable($name)
-    {
-        DB::table($name)->truncate();
     }
 
     /**
@@ -63,7 +51,7 @@ class NetexDatabase
                 'date' => $cal['date']
             ]);
         }
-        Log::debug('Calendar entries added to database: ' . $dumper->flush()->getRecordsWritten());
+        $this->stats['Calendar'] = $dumper->flush()->getRecordsWritten();
     }
 
     /**
@@ -82,7 +70,7 @@ class NetexDatabase
                 'company_number' => $operator['CompanyNumber']
             ]);
         }
-        Log::debug('Operators added to database: ' . $dumper->flush()->getRecordsWritten());
+        $this->stats['Operators'] = $dumper->flush()->getRecordsWritten();
     }
 
     /**
@@ -99,7 +87,7 @@ class NetexDatabase
                 'name' => $group['Name']
             ]);
         }
-        Log::debug('Line groups added to database: ' . $dumper->flush()->getRecordsWritten());
+        $this->stats['Line groups'] = $dumper->flush()->getRecordsWritten();
     }
 
     /**
@@ -122,7 +110,7 @@ class NetexDatabase
                 'line_group_ref' => $line['RepresentedByGroupRef']
             ]);
         }
-        Log::debug('Lines added to database: ' . $dumper->flush()->getRecordsWritten());
+        $this->stats['Lines'] = $dumper->flush()->getRecordsWritten();
     }
 
     /**
@@ -139,7 +127,7 @@ class NetexDatabase
                 'name' => $sp['Name']
             ]);
         }
-        Log::debug('Stop points added to database: ' . $dumper->flush()->getRecordsWritten());
+        $this->stats['Stop points'] = $dumper->flush()->getRecordsWritten();
     }
 
     public function writeDestinationDisplays($displays)
@@ -151,7 +139,7 @@ class NetexDatabase
                 'front_text' => $display['FrontText']
             ]);
         }
-        Log::debug('Destination displays added to database: ' . $dumper->flush()->getRecordsWritten());
+        $this->stats['Destination displays'] = $dumper->flush()->getRecordsWritten();
     }
 
     /**
@@ -171,7 +159,7 @@ class NetexDatabase
                 'pos_list' => $sl['posList']
             ]);
         }
-        Log::debug('Service links added to database: ' . $dumper->flush()->getRecordsWritten());
+        $this->stats['Service links'] = $dumper->flush()->getRecordsWritten();
     }
 
     /**
@@ -190,7 +178,7 @@ class NetexDatabase
                 'quay_ref' => $sa['QuayRef']
             ]);
         }
-        Log::debug('Stop assignments added to database: ' . $dumper->flush()->getRecordsWritten());
+        $this->stats['Stop assignments'] = $dumper->flush()->getRecordsWritten();
     }
 
     /**
@@ -200,8 +188,8 @@ class NetexDatabase
      */
     public function writeVehicleSchedules($data)
     {
-        $vsDump = new DbBulkInsert('netex_vehicle_schedules');
         $blockDump = new DbBulkInsert('netex_vehicle_blocks');
+        $vsDump = new DbBulkInsert('netex_vehicle_schedules');
         foreach ($data as $vs) {
             $blockDump->addRecord([
                 'id' => $vs['BlockRef'],
@@ -216,9 +204,7 @@ class NetexDatabase
             }
         }
         $vsDump->flush();
-        $blockDump->flush();
-
-        Log::debug('Vehicle schedules added to database: ' . $blockDump->getRecordsWritten());
+        $this->stats['Vehicle blocks'] = $blockDump->flush()->getRecordsWritten();
     }
 
     /**
@@ -250,10 +236,8 @@ class NetexDatabase
                 ]);
             }
         }
-        $vjDumper->flush();
         $ptDumper->flush();
-
-        Log::debug('Vehicle journeys added to database: ' . $vjDumper->getRecordsWritten());
+        $this->stats['Vehicle journeys'] = $vjDumper->flush()->getRecordsWritten();
     }
 
     /**
@@ -292,10 +276,9 @@ class NetexDatabase
                 ]);
             }
         }
-        $jpDumper->flush();
         $pspDumper->flush();
         $jplDumper->flush();
-        Log::debug('Journey patterns added to database: ' . $jpDumper->getRecordsWritten());
+        $this->stats['Journey patterns'] = $jpDumper->flush()->getRecordsWritten();
     }
 
     /**
@@ -323,9 +306,48 @@ class NetexDatabase
                 ]);
             }
         }
-        $routeDumper->flush();
         $seqDumper->flush();
+        $this->stats['Routes'] = $routeDumper->flush()->getRecordsWritten();
+    }
 
-        Log::debug('Routes added to database: ' . $routeDumper->getRecordsWritten());
+    /**
+     * Statistics of written entries.
+     *
+     * @return int[]
+     */
+    public function getStats(): array
+    {
+        return $this->stats;
+    }
+
+    /**
+     * String representation of written records.
+     */
+    public function statsToStr(): string
+    {
+        return implode(', ', array_map(
+            fn ($key) => "$key: {$this->stats[$key]}",
+            array_keys($this->stats)
+        ));
+    }
+
+    /**
+     * Reset db statistics.
+     */
+    public function resetStats(): self
+    {
+        $this->stats = [];
+        return $this;
+    }
+
+    /**
+     * Truncate database table.
+     *
+     * @param  string  $name
+     *   The table's name
+     */
+    protected function truncateTable($name)
+    {
+        DB::table($name)->truncate();
     }
 }

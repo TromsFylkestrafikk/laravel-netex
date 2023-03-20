@@ -5,6 +5,7 @@ namespace TromsFylkestrafikk\Netex\Console;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\Console\Helper\ProgressBar;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexDatabase;
 use TromsFylkestrafikk\Netex\Console\NeTEx\NetexFileParser;
@@ -122,7 +123,13 @@ class RoutedataImport extends Command
         }
 
         $this->import->fill(['import_status' => 'imported', 'message' => null])->save();
-        $this->lpInfo("Route data import complete");
+        $this->lpInfo(sprintf(
+            "Route data import complete: Period: %s – %s. Version: %s. Lines processed: %d",
+            $this->parser->availableFrom,
+            $this->parser->availableTo,
+            $this->parser->version,
+            $this->linesProcessed
+        ));
         return self::SUCCESS;
     }
 
@@ -153,6 +160,7 @@ class RoutedataImport extends Command
             $filename = basename($filePath);
             $this->progressBar->setMessage("Processing $filename");
             $this->progressBar->advance();
+            $database->resetStats();
             if ($filename === $this->routeSet->getSharedFile()) {
                 $this->processSharedFile($database);
                 $this->sharedIsProcessed = true;
@@ -164,6 +172,7 @@ class RoutedataImport extends Command
                 $database->writeJourneyPatterns($this->parser->journeyPatterns);
                 $database->writeVehicleJourneys($this->parser->vehicleJourneys);
             }
+            Log::debug(sprintf("NeTEx: file '%s' stats: %s", $filename, $database->statsToStr()));
         }
         $database->writeLines($this->parser->lines);
         $this->progressBar->finish();
@@ -182,7 +191,6 @@ class RoutedataImport extends Command
         $database->writeStopAssignments($this->parser->stopAssignments);
         $database->writeServiceLinks($this->parser->serviceLinks);
         $database->writeVehicleSchedules($this->parser->vehicleSchedules);
-
         // Free up menory.
         $this->parser->reset();
     }
@@ -209,7 +217,6 @@ class RoutedataImport extends Command
         if (!$this->linesProcessed || !$this->parser->availableFrom || !$this->parser->availableTo) {
             throw new Exception('Imported route set is missing critical data.');
         }
-        $this->lpInfo("Version is " . $this->parser->version);
         $this->import->fill([
             'available_from' => new Carbon($this->parser->availableFrom),
             'available_to' =>  new Carbon($this->parser->availableTo),
