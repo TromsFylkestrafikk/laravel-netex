@@ -288,6 +288,7 @@ class RouteActivator extends RouteBase
         $prevJourneyCount = $this->journeyDumper->getRecordsWritten();
         $prevCallCount = $this->callDumper->getRecordsWritten();
         if ($this->activationRequired($status)) {
+            $status->fill(['status' => 'incomplete'])->save();
             $this->destroyActiveDate($date)->buildActiveDate($date);
             $status->fill([
                 'import_id' => $this->import->id,
@@ -387,7 +388,7 @@ class RouteActivator extends RouteBase
             $this->dayActivationStatus = 'skipped: already activated for this set';
             return false;
         }
-        $otherSet = Import::find($status->import_id);
+        $otherSet = Import::imported()->find($status->import_id);
         if ($otherSet && $otherSet->md5 === $this->import->md5) {
             $this->dayActivationStatus = 'skipped: route sets are equal';
             return false;

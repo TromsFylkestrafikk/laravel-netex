@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use TromsFylkestrafikk\Netex\Services\RouteBase;
 
 /**
- * Detect difference between core NeTEx data and activated data.
+ * Detect difference between imported NeTEx data and currently activated data.
  */
 class RouteSetDiffDetector extends RouteBase
 {
