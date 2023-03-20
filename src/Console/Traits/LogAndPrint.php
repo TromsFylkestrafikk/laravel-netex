@@ -15,7 +15,7 @@ trait LogAndPrint
         'alert' => 'alert',
         'error' => 'error',
         'warning' => 'warn',
-        'notice' => 'print',
+        'notice' => 'info',
         'info' => 'line',
         'debug' => 'comment',
     ];

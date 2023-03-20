@@ -35,17 +35,18 @@ class RoutedataRemove extends Command
      */
     public function handle(): int
     {
+        $success = true;
         $this->setLogPrefix('[NeTEx delete]: ');
         if ($this->option('id')) {
-            $import = Import::find($this->option('id'));
-            if (!$import) {
-                $this->lpWarning(sprintf("Route set with ID %s was not found", $this->option('id')));
-                return self::FAILURE;
-            }
-            return $this->removeSet($import) ? self::SUCCESS : self::FAILURE;
+            $success = $this->removeById((int) $this->option('id'));
         }
-        $this->removeUnused();
-        return Command::SUCCESS;
+        if ($this->option('path')) {
+            $success = $success && $this->removeByPath($this->option('path'));
+        }
+        if (!$this->option('id') && !$this->option('path')) {
+            $success = $success && $this->removeUnused();
+        }
+        return $success ? Command::SUCCESS : Command::FAILURE;
     }
 
     /**
@@ -63,18 +64,43 @@ class RoutedataRemove extends Command
             $this->lpNotice("No route set found. Aborting");
             return false;
         }
-        $targets = Import::whereNotIn(
+        return Import::whereNotIn(
             'id',
             ActiveStatus::select('import_id')
                 ->distinct()
                 ->pluck('import_id')
                 ->push($last->id)
                 ->unique()
-        )->get();
-        foreach ($targets as $import) {
-            $this->removeSet($import);
+        )->get()->reduce(fn ($status, $import) => $status && $this->removeSet($import), true);
+    }
+
+    /**
+     * Remove route set by ID.
+     *
+     * @param int $id Import ID.
+     * @return bool
+     */
+    protected function removeById(int $id): bool
+    {
+        $import = Import::find($id);
+        if (!$import) {
+            $this->lpWarning(sprintf("Route set with ID %s was not found", $this->option('id')));
+            return false;
         }
-        return true;
+        return $this->removeSet($import);
+    }
+
+    /**
+     * Remove sets matching given path
+     *
+     * @param string $path
+     * @return bool
+     */
+    protected function removeByPath(string $path): bool
+    {
+        return Import::wherePath($path)
+            ->get()
+            ->reduce(fn ($status, $import) => $status && $this->removeSet($import), true);
     }
 
     /**
