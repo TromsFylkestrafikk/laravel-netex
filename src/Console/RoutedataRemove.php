@@ -18,15 +18,15 @@ class RoutedataRemove extends Command
      * @var string
      */
     protected $signature = 'netex:routedata-remove
-                            {--path= : Remove route set that has this path}
-                            {--id= : Remove this route set}';
+                            {--id= : Remove this route set}
+                            {--path= : Remove route set(s) matching this path}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Remove raw xml route data no longer in use.';
+    protected $description = 'Remove raw xml route data by ID or name. No options removes unused sets.';
 
     /**
      * Execute the console command.
@@ -77,12 +77,12 @@ class RoutedataRemove extends Command
     /**
      * Remove route set by ID.
      *
-     * @param int $id Import ID.
+     * @param int $importId Import ID.
      * @return bool
      */
-    protected function removeById(int $id): bool
+    protected function removeById(int $importId): bool
     {
-        $import = Import::find($id);
+        $import = Import::find($importId);
         if (!$import) {
             $this->lpWarning(sprintf("Route set with ID %s was not found", $this->option('id')));
             return false;
