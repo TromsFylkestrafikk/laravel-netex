@@ -25,6 +25,7 @@ class NetexFileParser
     public $destinationDisplays = [];
     public $stopAssignments = [];
     public $vehicleSchedules = [];
+    public $notices = [];
     public $version = null;
 
     // XML data
@@ -33,6 +34,7 @@ class NetexFileParser
     public $routes = [];
     public $journeyPatterns = [];
     public $vehicleJourneys = [];
+    public $noticeAssignments = [];
 
     protected $path;
 
@@ -70,6 +72,7 @@ class NetexFileParser
                         $this->availableFrom = $sxml->FromDate;
                         $this->availableTo = $sxml->ToDate;
                         break;
+
                     case 'Operator':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
                         $id = $this->trimID((string) $sxml->attributes()->id);
@@ -137,6 +140,10 @@ class NetexFileParser
                         break;
 
                     case 'Notice':
+                        $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
+                        $id = (string) $sxml->attributes()->id;
+                        $this->notices[$id]['text'] = (string) $sxml->Text;
+                        $this->notices[$id]['PublicCode'] = (string) $sxml->PublicCode;
                         break;
 
                     case 'Block':
@@ -194,6 +201,7 @@ class NetexFileParser
                 }
             }
         }
+
         $xml->close();
     }
 
@@ -267,6 +275,7 @@ class NetexFileParser
         $this->routes = [];
         $this->journeyPatterns = [];
         $this->vehicleJourneys = [];
+        $this->noticeAssignments = [];
 
         $doc = new DOMDocument('1.0', 'UTF-8');
         $xml = new XMLReader();
@@ -372,6 +381,13 @@ class NetexFileParser
                         $this->vehicleJourneys[$id]['passingTimes'] = $timeTable;
                         break;
 
+                    case 'NoticeAssignment':
+                        $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
+                        $id = (string) $sxml->attributes()->id;
+                        $this->noticeAssignments[$id]['NoticeRef'] = (string) $sxml->NoticeRef->attributes()->ref;
+                        $this->noticeAssignments[$id]['NoticedObjectRef'] = (string) $sxml->NoticedObjectRef->attributes()->ref;
+                        break;
+
                     default:
                         break;
                 }
@@ -400,6 +416,7 @@ class NetexFileParser
         unset($this->destinationDisplays);
         unset($this->serviceLinks);
         unset($this->vehicleSchedules);
+        unset($this->notices);
     }
 
     /**
