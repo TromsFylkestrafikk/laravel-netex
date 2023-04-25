@@ -22,21 +22,4 @@ class NoticesController extends Controller
         });
         return response($notice);
     }
-
-    public function journeyNotices()
-    {
-        $notice = [];
-        $result = NoticeAssignment::with('notice')->get();
-        $result->each(function ($item) use (&$notice) {
-            list(, $obj, $id) = explode(':', $item->notice_obj_ref);
-            if ($obj === 'ServiceJourney') {
-                if (empty($notice[$id])) {
-                    $notice[$id] = $item->notice->text;
-                } else {
-                    $notice[$id] .= PHP_EOL . $item->notice->text;
-                }
-            }
-        });
-        return response($notice);
-    }
 }

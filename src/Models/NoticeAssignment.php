@@ -12,6 +12,13 @@ use TromsFylkestrafikk\Netex\Models\Notice;
  * @property string $id
  * @property string $notice_ref
  * @property string $notice_obj_ref
+ * @property-read \TromsFylkestrafikk\Netex\Models\Notice|null $notice
+ * @method static \Illuminate\Database\Eloquent\Builder|NoticeAssignment newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|NoticeAssignment newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|NoticeAssignment query()
+ * @method static \Illuminate\Database\Eloquent\Builder|NoticeAssignment whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|NoticeAssignment whereNoticeObjRef($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|NoticeAssignment whereNoticeRef($value)
  */
 class NoticeAssignment extends Model
 {

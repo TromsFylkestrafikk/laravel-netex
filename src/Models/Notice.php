@@ -11,6 +11,12 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $id
  * @property string $text
  * @property string $public_code
+ * @method static \Illuminate\Database\Eloquent\Builder|Notice newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Notice newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder|Notice query()
+ * @method static \Illuminate\Database\Eloquent\Builder|Notice whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Notice wherePublicCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|Notice whereText($value)
  */
 class Notice extends Model
 {
