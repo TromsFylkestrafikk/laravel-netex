@@ -15,9 +15,9 @@ class NoticesController extends Controller
         $result = NoticeAssignment::with('notice')->get();
         $result->each(function ($item) use (&$notice) {
             if (empty($notice[$item->notice_obj_ref])) {
-                $notice[$item->notice_obj_ref] = $item->notice->text;
+                $notice[$item->notice_obj_ref] = [$item->notice->text];
             } else {
-                $notice[$item->notice_obj_ref] .= PHP_EOL . $item->notice->text;
+                array_push($notice[$item->notice_obj_ref], $item->notice->text);
             }
         });
         return response($notice);
