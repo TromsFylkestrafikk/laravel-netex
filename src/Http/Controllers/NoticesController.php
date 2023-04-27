@@ -9,16 +9,19 @@ use TromsFylkestrafikk\Netex\Models\NoticeAssignment;
 
 class NoticesController extends Controller
 {
+    /**
+     * Return a multidimensional array of notices, keyed by the target's ID.
+     *
+     * @return Illuminate\Http\Response
+     */
     public function allNotices()
     {
         $notice = [];
         $result = NoticeAssignment::with('notice')->get();
         $result->each(function ($item) use (&$notice) {
-            if (empty($notice[$item->notice_obj_ref])) {
-                $notice[$item->notice_obj_ref] = [$item->notice->text];
-            } else {
-                array_push($notice[$item->notice_obj_ref], $item->notice->text);
-            }
+            // Since each target object can have multiple notices, we'll use a
+            // multidimensional array ($notice) for storage.
+            $notice[$item->notice_obj_ref][] = $item->notice->text;
         });
         return response($notice);
     }
