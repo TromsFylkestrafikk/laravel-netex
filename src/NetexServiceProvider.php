@@ -34,7 +34,7 @@ class NetexServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 __DIR__ . '/../config/netex.php' => config_path('netex.php'),
-            ], ['netex', 'config', 'netex-config']);
+            ], 'config');
         }
     }
 
@@ -77,7 +77,7 @@ class NetexServiceProvider extends ServiceProvider
      */
     protected function registerRoutes()
     {
-        $routeAttrs = config('netex.route_attributes', ['prefix' => 'api/netex', 'middleware' => ['api']]);
+        $routeAttrs = config('netex.routes_api', ['prefix' => 'api/netex', 'middleware' => ['api']]);
         Route::group($routeAttrs, function () {
             $this->loadRoutesFrom(__DIR__ . '/../routes/api.php');
         });
