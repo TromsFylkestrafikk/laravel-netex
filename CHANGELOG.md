@@ -6,6 +6,7 @@
 - Route sets now have overall import status, and per day activation
   status.
 - Several new artisan commands to administer sets and activation.
+- Notices added both to DB and as API call.
 
 ### Changed
 - Route set related artisan commands have been renamed to a shared
