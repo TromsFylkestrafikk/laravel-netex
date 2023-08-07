@@ -171,6 +171,7 @@ class RoutedataImport extends Command
                 $database->writeRoutes($this->parser->routes);
                 $database->writeJourneyPatterns($this->parser->journeyPatterns);
                 $database->writeVehicleJourneys($this->parser->vehicleJourneys);
+                $database->writeNoticeAssignments($this->parser->noticeAssignments);
             }
             Log::debug(sprintf("NeTEx: file '%s' stats: %s", $filename, $database->statsToStr()));
         }
@@ -191,6 +192,7 @@ class RoutedataImport extends Command
         $database->writeStopAssignments($this->parser->stopAssignments);
         $database->writeServiceLinks($this->parser->serviceLinks);
         $database->writeVehicleSchedules($this->parser->vehicleSchedules);
+        $database->writeNotices($this->parser->notices);
         // Free up menory.
         $this->parser->reset();
     }

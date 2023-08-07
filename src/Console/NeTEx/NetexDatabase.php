@@ -24,6 +24,7 @@ class NetexDatabase
         $this->truncateTable('netex_service_links');
         $this->truncateTable('netex_vehicle_schedules');
         $this->truncateTable('netex_vehicle_blocks');
+        $this->truncateTable('netex_notices');
 
         // Truncate all tables from line NeTEx files.
         $this->truncateTable('netex_vehicle_journeys');
@@ -34,6 +35,7 @@ class NetexDatabase
         $this->truncateTable('netex_routes');
         $this->truncateTable('netex_route_point_sequence');
         $this->truncateTable('netex_lines');
+        $this->truncateTable('netex_notice_assignments');
     }
 
     /**
@@ -308,6 +310,42 @@ class NetexDatabase
         }
         $seqDumper->flush();
         $this->stats['Routes'] = $routeDumper->flush()->getRecordsWritten();
+    }
+
+    /**
+     * Write to database (notices).
+     *
+     * @param  object[]  $data
+     */
+    public function writeNotices($data)
+    {
+        $dumper = new DbBulkInsert('netex_notices');
+        foreach ($data as $id => $notice) {
+            $dumper->addRecord([
+                'id' => $id,
+                'text' => $notice['text'],
+                'public_code' => $notice['PublicCode'],
+            ]);
+        }
+        $this->stats['Notices'] = $dumper->flush()->getRecordsWritten();
+    }
+
+    /**
+     * Write to database (noticeAssignments).
+     *
+     * @param  object[]  $data
+     */
+    public function writeNoticeAssignments($data)
+    {
+        $dumper = new DbBulkInsert('netex_notice_assignments');
+        foreach ($data as $id => $na) {
+            $dumper->addRecord([
+                'id' => $id,
+                'notice_ref' => $na['NoticeRef'],
+                'notice_obj_ref' => $na['NoticedObjectRef'],
+            ]);
+        }
+        $this->stats['Notice assignments'] = $dumper->flush()->getRecordsWritten();
     }
 
     /**

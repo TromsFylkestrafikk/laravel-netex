@@ -3,6 +3,7 @@
 namespace TromsFylkestrafikk\Netex;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Route;
 use TromsFylkestrafikk\Netex\Console\ImportStops;
 use TromsFylkestrafikk\Netex\Console\RoutedataActivate;
 use TromsFylkestrafikk\Netex\Console\RoutedataDeactivate;
@@ -20,6 +21,7 @@ class NetexServiceProvider extends ServiceProvider
         $this->publishConfig();
         $this->setupMigrations();
         $this->setupConsoleCommands();
+        $this->registerRoutes();
     }
 
     public function register()
@@ -32,7 +34,7 @@ class NetexServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 __DIR__ . '/../config/netex.php' => config_path('netex.php'),
-            ], ['netex', 'config', 'netex-config']);
+            ], 'config');
         }
     }
 
@@ -68,5 +70,16 @@ class NetexServiceProvider extends ServiceProvider
                 SyncActiveStops::class,
             ]);
         }
+    }
+
+    /**
+     * Setup routes utilized by NeTEx.
+     */
+    protected function registerRoutes()
+    {
+        $routeAttrs = config('netex.routes_api', ['prefix' => 'api/netex', 'middleware' => ['api']]);
+        Route::group($routeAttrs, function () {
+            $this->loadRoutesFrom(__DIR__ . '/../routes/api.php');
+        });
     }
 }
