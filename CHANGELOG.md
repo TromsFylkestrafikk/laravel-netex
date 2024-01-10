@@ -15,6 +15,7 @@
 ### Fixed
 - Activation will not choke on duplicate journeys/calls in route set.
 - Increased length of name* related columns
+- Laravel 10.x composer requirement support
 
 ## [0.1.3] – 2023-01-16
 
