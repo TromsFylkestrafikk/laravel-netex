@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * TromsFylkestrafikk\Netex\Models\Import
  *
  * @property int $id Incremental import ID.
- * @property string $path Path to raw XML set relative to netex disk.
+ * @property string $path Full path to raw XML route set.
  * @property string|null $md5 MD5 sum of entire set
  * @property string|null $version Version attached to route set, if present
  * @property int $size Collected size of XMLs in route set

@@ -2,8 +2,9 @@
 
 namespace TromsFylkestrafikk\Netex\Console;
 
+use League\Flysystem\Filesystem;
+use League\Flysystem\Local\LocalFilesystemAdapter;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
 use TromsFylkestrafikk\Netex\Models\Import;
 use TromsFylkestrafikk\Netex\Models\ActiveStatus;
 use TromsFylkestrafikk\Netex\Console\Traits\LogAndPrint;
@@ -11,6 +12,17 @@ use TromsFylkestrafikk\Netex\Console\Traits\LogAndPrint;
 class RoutedataRemove extends Command
 {
     use LogAndPrint;
+
+    /**
+     * @var Filesystem
+     */
+    protected $localFs;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->localFs = new Filesystem(new LocalFilesystemAdapter('/'));
+    }
 
     /**
      * The name and signature of the console command.
@@ -115,10 +127,7 @@ class RoutedataRemove extends Command
         $this->lpInfo(sprintf("Deleting set ID %d: '%s'", $import->id, $import->path));
         if (!$this->otherPathExists($import)) {
             $this->lpInfo(sprintf("Removing folder '%s'", $import->path));
-            $success = Storage::disk(config('netex.disk'))->deleteDirectory($import->path);
-            if (!$success) {
-                $this->warn("Failed to delete route data directory {$import->path}");
-            }
+            $this->localFs->deleteDirectory($import->path);
         }
         return $import->delete() && $success;
     }

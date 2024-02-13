@@ -24,7 +24,7 @@ class RoutedataImport extends Command
      * @var string
      */
     protected $signature = 'netex:routedata-import
-                            {path : Path to route set directory, relative to netex disk root}
+                            {path : Full path to directory contining route set XML files}
                             {main : Filename of shared NeTEx XML data}
                             {--f|force : Force update, even if not modified}
                             {--s|no-sync-stops : Don\'t sync active stop places found in set}';
@@ -96,7 +96,7 @@ class RoutedataImport extends Command
         $this->lpInfo('Importing NeTEx route data files...');
 
         // Check files to be imported.
-        $netexDir = trim($this->argument('path'), '/');
+        $netexDir = realpath($this->argument('path'));
         $mainXmlFile = $this->argument('main');
         $this->routeSet = new RouteSet($netexDir, $mainXmlFile);
         if (!$this->option('force') && !$this->routeSet->isModified()) {

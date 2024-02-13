@@ -42,7 +42,7 @@ class NetexFileParser
      * Constructor.
      *
      * @param  string  $path
-     *   Full or relative path to main NeTEx file
+     *   Full path to main NeTEx file
      */
     public function __construct($path)
     {
@@ -267,7 +267,7 @@ class NetexFileParser
      * Parse NeTEx (XML) line file.
      *
      * @param  string  $filename
-     *   Full or relative path to NeTEx line file
+     *   Full path to NeTEx line file
      */
     public function parseLineXmlFile($filename)
     {

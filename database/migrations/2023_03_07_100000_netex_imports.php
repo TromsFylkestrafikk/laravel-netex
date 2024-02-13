@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::create('netex_imports', function (Blueprint $table) {
             $table->id()->comment('Incremental import ID.');
-            $table->char('path')->comment('Path to raw XML set relative to netex disk.');
+            $table->char('path')->comment('Full path to directory cotaining route set XML files.');
             $table->char('md5')->nullable()->comment('MD5 sum of entire set');
             $table->char('version', 16)->nullable()->comment('Version attached to route set, if present');
             $table->unsignedInteger('size')->comment('Collected size of XMLs in route set');

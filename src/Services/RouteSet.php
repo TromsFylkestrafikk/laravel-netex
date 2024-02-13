@@ -19,7 +19,7 @@ class RouteSet
     protected $id;
 
     /**
-     * Path to route set, relative to configured disk
+     * Full path to route set.
      *
      * @var string
      */
@@ -52,20 +52,21 @@ class RouteSet
     protected $size = null;
 
     /**
-     * @param string $path Path relative to configured disk.
-     * @param string $sharedFile Name of xml filed with shared data across set.
-     * @param string $id Name/id of set. Generated if not given.
+     * @param string $path Full path to directory with route set
+     * @param string $sharedFile Name of xml filed with shared data across set
+     * @param string $id Name/id of set. Generated if not given
+     *
+     * @return void
      */
     public function __construct(string $path, string $sharedFile, $id = null)
     {
         $this->id = $id;
         $this->sharedFile = $sharedFile;
         $this->path = $path;
-        $fullPath = $this->getFullPath();
-        if (!is_dir($fullPath)) {
-            throw new Exception("Directory does not exist: " . $fullPath);
+        if (!is_dir($path)) {
+            throw new Exception("Directory does not exist: " . $path);
         }
-        if (!file_exists($this->getFilePath($sharedFile))) {
+        if (!file_exists($this->getSharedFilePath())) {
             throw new Exception("Shared data file not found within set: " . $sharedFile);
         }
         if (!count($this->getFiles())) {
@@ -100,34 +101,22 @@ class RouteSet
         if ($this->md5 !== null) {
             return $this->md5;
         }
-        $root = config(sprintf("filesystems.%s.root", config('netex.disk')));
         $md5s = [];
         foreach ($this->getFiles() as $xmlFile) {
-            $md5s[] = md5_file("$root/$xmlFile");
+            $md5s[] = md5_file($xmlFile);
         }
         $this->md5 = md5(implode(':', $md5s));
         return $this->md5;
     }
 
     /**
-     * Get path to route set, relative to netex disk.
+     * Get full path to route set.
      *
      * @return string
      */
     public function getPath(): string
     {
         return $this->path;
-    }
-
-    /**
-     * Get full file system path to route set.
-     *
-     * @return string
-     */
-    public function getFullPath(): string
-    {
-        $root = config(sprintf("filesystems.disks.%s.root", config('netex.disk')));
-        return "$root/{$this->path}";
     }
 
     /**
@@ -158,7 +147,7 @@ class RouteSet
     public function getFiles(): array
     {
         if ($this->files === null) {
-            $this->files = glob(sprintf("%s/*.xml", $this->getFullPath()));
+            $this->files = glob(sprintf("%s/*.xml", $this->getPath()));
             sort($this->files);
         }
         return $this->files;
@@ -172,7 +161,7 @@ class RouteSet
      */
     public function getFilePath($fileName): string
     {
-        return sprintf("%s/%s", $this->getFullPath(), $fileName);
+        return sprintf("%s/%s", $this->path, $fileName);
     }
 
     /**

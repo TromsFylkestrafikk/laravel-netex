@@ -11,6 +11,8 @@
 ### Changed
 - Route set related artisan commands have been renamed to a shared
   `netex:routedata-` prefix
+- Route sets are now provided by full path, not relative to disk. Use
+  of Laravel disks has been refactored to use Flysystem directly.
 
 ### Fixed
 - Activation will not choke on duplicate journeys/calls in route set.
