@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- Improved detection of changes in imported data.
+
 ## [0.2.0] – 2024-04-18
 ### Added
 - Route sets now have overall import status, and per day activation
