@@ -3,6 +3,7 @@
 namespace TromsFylkestrafikk\Netex\Console;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use SimpleXMLElement;
@@ -327,15 +328,21 @@ class ImportStops extends Command
         }
 
         // Next is whether to process it or not. Every time an NeTEx element has
-        // been updated, a new version is added, so just we use this for
-        // comparison.
+        // been updated, the "changed" date field is updated, so we'll use this
+        // date for comparison. The version number should also change, but cannot
+        // be trusted alone.
         $version = $xmlElement['version'];
         $modelClass = 'TromsFylkestrafikk\\Netex\\Models\\' . $modelName;
         if (!($model = $modelClass::find($modelId))) {
             $model = new $modelClass();
             $model->id = $modelId;
         } elseif ($version == $model->version) {
-            return null;
+            $modelChanged = (new Carbon($model->changed))->format('Y-m-d');
+            $modelChangedXml = (new Carbon($xmlElement['changed']))->format('Y-m-d');
+            if ($modelChanged === $modelChangedXml) {
+                // Update is not required.
+                return null;
+            }
         }
         $model->created = $xmlElement['created'];
         $model->changed = $xmlElement['changed'];
