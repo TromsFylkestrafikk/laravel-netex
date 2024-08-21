@@ -140,7 +140,7 @@ class RouteBase
             ])
             ->join('netex_journey_pattern_stop_point as patstop', 'ptime.journey_pattern_stop_point_ref', '=', 'patstop.id')
             ->leftJoin('netex_destination_displays as ddisp', 'patstop.destination_display_ref', '=', 'ddisp.id')
-            ->join('netex_stop_assignments as stopass', 'patstop.stop_point_ref', '=', 'stopass.id')
+            ->join('netex_stop_assignments as stopass', 'patstop.stop_point_ref', '=', 'stopass.stop_point_ref')
             ->join('netex_stop_quay as quay', 'stopass.quay_ref', '=', 'quay.id')
             ->join('netex_stop_place as stop', 'quay.stop_place_id', '=', 'stop.id')
             ->where('ptime.vehicle_journey_ref', '=', $journeyRef)

@@ -53,7 +53,7 @@ class NetexFileParser
     /**
      * Parse main NeTEx (XML) file.
      */
-    public function parseMainXmlFile()
+    public function parseMainXmlFile(): void
     {
         $doc = new DOMDocument('1.0', 'UTF-8');
         $xml = new XMLReader();
@@ -75,7 +75,7 @@ class NetexFileParser
 
                     case 'Operator':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = $this->trimID((string) $sxml->attributes()->id);
+                        $id = (string) $sxml['id'];
                         $this->operators[$id]['CompanyNumber'] = (int) $sxml->CompanyNumber;
                         $this->operators[$id]['LegalName'] = (string) $sxml->LegalName;
                         $this->operators[$id]['Name'] = (string) $sxml->Name;
@@ -83,45 +83,51 @@ class NetexFileParser
 
                     case 'GroupOfLines':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = $this->trimID($sxml->attributes()->id);
+                        $id = (string) $sxml['id'];
                         $this->groupOfLines[$id]['Name'] = (string) $sxml->Name;
                         break;
 
                     case 'RoutePoint':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = $this->trimID($sxml->attributes()->id);
+                        $id = (string) $sxml['id'];
                         // Hack, but pick a random element and get the Trapeze
                         // export version of this route set.
                         if ($this->version === null) {
-                            $this->version = (string) $sxml->attributes()->version;
+                            $this->version = (string) $sxml['version'];
                         }
-                        $this->routePoints[$id]['ProjectedPointRef'] = (string) $sxml->projections->PointProjection->ProjectedPointRef->attributes()->ref;
+                        $this->routePoints[$id]['ProjectedPointRef'] =
+                            $sxml->projections->PointProjection->ProjectedPointRef['ref'];
                         break;
 
                     case 'DestinationDisplay':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = (int) $this->trimID($sxml['id']);
+                        $id = (string) $sxml['id'];
                         $this->destinationDisplays[$id]['FrontText'] = (string) $sxml->FrontText;
                         break;
 
                     case 'ScheduledStopPoint':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = $this->trimID((string) $sxml->attributes()->id);
+                        $id = (string) $sxml['id'];
                         $this->scheduledStopPoints[$id]['Name'] = (string) $sxml->Name;
                         break;
 
                     case 'ServiceLink':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = $this->trimID((string) $sxml->attributes()->id);
+                        $id = (string) $sxml['id'];
                         $ns = $sxml->getNamespaces(true);
                         $posList = '';
                         $posCount = 0;
                         $posDimension = 0;
 
                         if (isset($sxml->projections->LinkSequenceProjection) && isset($ns['gis'])) {
-                            $gis = $sxml->projections->LinkSequenceProjection->children($ns['gis'])->LineString->posList;
-                            $posDimension = (int) $gis->attributes()->srsDimension;
-                            $posCount = (int) $gis->attributes()->count;
+                            $gis = $sxml
+                                ->projections
+                                ->LinkSequenceProjection
+                                ->children($ns['gis'])
+                                ->LineString
+                                ->posList;
+                            $posDimension = (int) $gis['srsDimension'];
+                            $posCount = (int) $gis['count'];
                             $posList = (string) $gis;
                         }
 
@@ -133,29 +139,29 @@ class NetexFileParser
 
                     case 'PassengerStopAssignment':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = $this->trimID($sxml->attributes()->id);
-                        $this->stopAssignments[$id]['order'] = (int) $sxml->attributes()->order;
-                        $this->stopAssignments[$id]['ScheduledStopPointRef'] = $this->trimID($sxml->ScheduledStopPointRef->attributes()->ref);
-                        $this->stopAssignments[$id]['QuayRef'] = (string) $sxml->QuayRef->attributes()->ref;
+                        $id = (string) $sxml['id'];
+                        $this->stopAssignments[$id]['order'] = (int) $sxml['order'];
+                        $this->stopAssignments[$id]['ScheduledStopPointRef'] = (string) $sxml->ScheduledStopPointRef['ref'];
+                        $this->stopAssignments[$id]['QuayRef'] = (string) $sxml->QuayRef['ref'];
                         break;
 
                     case 'Notice':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = (string) $sxml->attributes()->id;
+                        $id = (string) $sxml['id'];
                         $this->notices[$id]['text'] = (string) $sxml->Text;
                         $this->notices[$id]['PublicCode'] = (string) $sxml->PublicCode;
                         break;
 
                     case 'Block':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = $this->trimID($sxml->attributes()->id);
+                        $id = (string) $sxml['id'];
                         $this->vehicleSchedules[$id]['BlockRef'] = $id;
-                        $this->vehicleSchedules[$id]['PrivateCode'] = (int) $sxml->PrivateCode;
-                        $this->vehicleSchedules[$id]['DayTypeRef'] = $this->trimID($sxml->dayTypes->DayTypeRef->attributes()->ref);
+                        $this->vehicleSchedules[$id]['PrivateCode'] = $sxml->PrivateCode;
+                        $this->vehicleSchedules[$id]['DayTypeRef'] = $sxml->dayTypes->DayTypeRef['ref'];
                         $journeys = [];
 
                         foreach ($sxml->journeys->VehicleJourneyRef as $journeyRef) {
-                            $journeys[] = ['VehicleJourneyRef' => $this->trimID($journeyRef->attributes()->ref)];
+                            $journeys[] = ['VehicleJourneyRef' => $journeyRef['ref']];
                         }
 
                         $this->vehicleSchedules[$id]['journeys'] = $journeys;
@@ -163,7 +169,7 @@ class NetexFileParser
 
                     case 'DayType':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = $this->trimID((string) $sxml->attributes()->id);
+                        $id = (string) $sxml['id'];
                         $daysOfWeek = null;
 
                         if (isset($sxml->properties)) {
@@ -175,24 +181,24 @@ class NetexFileParser
 
                     case 'OperatingPeriod':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = (string) $sxml->attributes()->id;
-                        $this->operatingPeriods[$id]['FromDate'] = (string) $sxml->FromDate;
-                        $this->operatingPeriods[$id]['ToDate'] = (string) $sxml->ToDate;
+                        $id = (string) $sxml['id'];
+                        $this->operatingPeriods[$id]['FromDate'] = $sxml->FromDate;
+                        $this->operatingPeriods[$id]['ToDate'] = $sxml->ToDate;
                         break;
 
                     case 'DayTypeAssignment':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = $this->trimID((string) $sxml->attributes()->id);
+                        $id = (string) $sxml['id'];
                         $operatingPeriodRef = null;
 
                         if (isset($sxml->OperatingPeriodRef)) {
-                            $operatingPeriodRef = (string) $sxml->OperatingPeriodRef->attributes()->ref;
+                            $operatingPeriodRef = (string) $sxml->OperatingPeriodRef['ref'];
                         }
 
-                        $this->dayTypeAssignments[$id]['order'] = (int) $sxml->attributes()->order;
+                        $this->dayTypeAssignments[$id]['order'] = (int) $sxml['order'];
                         $this->dayTypeAssignments[$id]['isAvailable'] = ((string) $sxml->isAvailable !== 'false');
                         $this->dayTypeAssignments[$id]['OperatingPeriodRef'] = $operatingPeriodRef;
-                        $this->dayTypeAssignments[$id]['DayTypeRef'] = $this->trimID((string) $sxml->DayTypeRef->attributes()->ref);
+                        $this->dayTypeAssignments[$id]['DayTypeRef'] = (string) $sxml->DayTypeRef['ref'];
                         $this->dayTypeAssignments[$id]['Date'] = (string) $sxml->Date;
                         break;
 
@@ -291,35 +297,35 @@ class NetexFileParser
 
                     case 'Line':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = $this->trimID((string) $sxml->attributes()->id);
+                        $id = (string) $sxml['id'];
                         $operatorRef = '1';   // Unknown line operator.
 
                         if (isset($sxml->OperatorRef)) {
-                            $operatorRef = $this->trimID($sxml->OperatorRef->attributes()->ref);
+                            $operatorRef = $sxml->OperatorRef['ref'];
                         }
 
-                        $this->lines[$id]['Name'] = (string) $sxml->Name;
-                        $this->lines[$id]['TransportMode'] = (string) $sxml->TransportMode;
-                        $this->lines[$id]['TransportSubmode'] = (string) $sxml->TransportSubmode->children()[0];
-                        $this->lines[$id]['PublicCode'] = (string) $sxml->PublicCode;
-                        $this->lines[$id]['PrivateCode'] = (int) $sxml->PrivateCode;
+                        $this->lines[$id]['Name'] = $sxml->Name;
+                        $this->lines[$id]['TransportMode'] = $sxml->TransportMode;
+                        $this->lines[$id]['TransportSubmode'] = $sxml->TransportSubmode->children()[0];
+                        $this->lines[$id]['PublicCode'] = $sxml->PublicCode;
+                        $this->lines[$id]['PrivateCode'] = $sxml->PrivateCode;
                         $this->lines[$id]['OperatorRef'] = $operatorRef;
-                        $this->lines[$id]['RepresentedByGroupRef'] = $this->trimID($sxml->RepresentedByGroupRef->attributes()->ref);
+                        $this->lines[$id]['RepresentedByGroupRef'] = $sxml->RepresentedByGroupRef['ref'];
                         break;
 
                     case 'Route':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = $this->trimID($sxml->attributes()->id);
+                        $id = (string) $sxml['id'];
                         $this->routes[$id]['Name'] = $sxml->Name;
                         $this->routes[$id]['ShortName'] = $sxml->ShortName;
-                        $this->routes[$id]['LineRef'] = $this->trimID($sxml->LineRef->attributes()->ref);
+                        $this->routes[$id]['LineRef'] = $sxml->LineRef['ref'];
                         $this->routes[$id]['DirectionType'] = $sxml->DirectionType;
                         $points = [];
 
                         foreach ($sxml->pointsInSequence->PointOnRoute as $point) {
                             $points[] = [
-                                'order' => (int) $point->attributes()->order,
-                                'RoutePointRef' => $this->trimID($point->RoutePointRef->attributes()->ref)
+                                'order' => (int) $point['order'],
+                                'RoutePointRef' => $point->RoutePointRef['ref']
                             ];
                         }
 
@@ -328,30 +334,30 @@ class NetexFileParser
 
                     case 'JourneyPattern':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = $this->trimID($sxml->attributes()->id);
+                        $id = (string) $sxml['id'];
                         $this->journeyPatterns[$id]['Name'] = $sxml->Name;
-                        $this->journeyPatterns[$id]['RouteRef'] = $this->trimID($sxml->RouteRef->attributes()->ref);
+                        $this->journeyPatterns[$id]['RouteRef'] = $sxml->RouteRef['ref'];
                         $points = [];
                         $links = [];
 
                         foreach ($sxml->pointsInSequence->StopPointInJourneyPattern as $point) {
                             $points[] = [
-                                'id' => $this->trimID($point['id']),
+                                'id' => $point['id'],
                                 'order' => (int) $point['order'],
-                                'ScheduledStopPointRef' => $this->trimID($point->ScheduledStopPointRef['ref']),
+                                'ScheduledStopPointRef' => (string) $point->ScheduledStopPointRef['ref'],
                                 'ForAlighting' => (int) ((string) $point->ForAlighting !== 'false'),
                                 'ForBoarding' => (int) ((string) $point->ForBoarding !== 'false'),
                                 'DestinationDisplayRef' => $point->DestinationDisplayRef
-                                    ? ((int) $this->trimID($point->DestinationDisplayRef['ref']))
+                                    ? ($point->DestinationDisplayRef['ref'])
                                     : null,
                             ];
                         }
 
                         foreach ($sxml->linksInSequence->ServiceLinkInJourneyPattern as $link) {
                             $links[] = [
-                                'id' => $this->trimID($link->attributes()->id),
-                                'order' => (int) $link->attributes()->order,
-                                'ServiceLinkRef' => $this->trimID($link->ServiceLinkRef->attributes()->ref)
+                                'id' => $link['id'],
+                                'order' => (int) $link['order'],
+                                'ServiceLinkRef' => $link->ServiceLinkRef['ref']
                             ];
                         }
 
@@ -361,20 +367,20 @@ class NetexFileParser
 
                     case 'ServiceJourney':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = $this->trimID((string) $sxml->attributes()->id);
+                        $id = (string) $sxml['id'];
                         $this->vehicleJourneys[$id]['Name'] = $sxml->Name;
                         $this->vehicleJourneys[$id]['PrivateCode'] = (int) $sxml->PrivateCode;
-                        $this->vehicleJourneys[$id]['JourneyPatternRef'] = $this->trimID($sxml->JourneyPatternRef->attributes()->ref);
-                        $this->vehicleJourneys[$id]['OperatorRef'] = $this->trimID($sxml->OperatorRef->attributes()->ref);
-                        $this->vehicleJourneys[$id]['LineRef'] = $this->trimID($sxml->LineRef->attributes()->ref);
-                        $this->vehicleJourneys[$id]['DayTypeRef'] = $this->trimID($sxml->dayTypes->DayTypeRef->attributes()->ref);
+                        $this->vehicleJourneys[$id]['JourneyPatternRef'] = $sxml->JourneyPatternRef['ref'];
+                        $this->vehicleJourneys[$id]['OperatorRef'] = $sxml->OperatorRef['ref'];
+                        $this->vehicleJourneys[$id]['LineRef'] = $sxml->LineRef['ref'];
+                        $this->vehicleJourneys[$id]['DayTypeRef'] = $sxml->dayTypes->DayTypeRef['ref'];
                         $timeTable = [];
 
                         foreach ($sxml->passingTimes->TimetabledPassingTime as $pt) {
                             $timeTable[] = [
-                                'ArrivalTime' => $pt->ArrivalTime ? (string) $pt->ArrivalTime : null,
-                                'DepartureTime' => $pt->DepartureTime ? (string) $pt->DepartureTime : null,
-                                'StopPointInJourneyPatternRef' => $this->trimID((string) $pt->StopPointInJourneyPatternRef->attributes()->ref)
+                                'ArrivalTime' => $pt->ArrivalTime ? $pt->ArrivalTime : null,
+                                'DepartureTime' => $pt->DepartureTime ? $pt->DepartureTime : null,
+                                'StopPointInJourneyPatternRef' => $pt->StopPointInJourneyPatternRef['ref'],
                             ];
                         }
 
@@ -383,9 +389,9 @@ class NetexFileParser
 
                     case 'NoticeAssignment':
                         $sxml = simplexml_import_dom($doc->importNode($xml->expand(), true));
-                        $id = (string) $sxml->attributes()->id;
-                        $this->noticeAssignments[$id]['NoticeRef'] = (string) $sxml->NoticeRef->attributes()->ref;
-                        $this->noticeAssignments[$id]['NoticedObjectRef'] = (string) $sxml->NoticedObjectRef->attributes()->ref;
+                        $id = (string) $sxml['id'];
+                        $this->noticeAssignments[$id]['NoticeRef'] = (string) $sxml->NoticeRef['ref'];
+                        $this->noticeAssignments[$id]['NoticedObjectRef'] = (string) $sxml->NoticedObjectRef['ref'];
                         break;
 
                     default:
@@ -477,19 +483,5 @@ class NetexFileParser
 
         $day = date("l", $timestamp);
         return (strpos($daysOfWeek, $day) !== false) ? true : false;
-    }
-
-    /**
-     * Trim the supplied ID string.
-     *
-     * @param  string  $id
-     *   A string with sections separated by colon (:)
-     * @return  string
-     *   Returns the last section of the input string
-     */
-    protected function trimID($id): string
-    {
-        $arr = explode(':', $id);
-        return end($arr);
     }
 }
