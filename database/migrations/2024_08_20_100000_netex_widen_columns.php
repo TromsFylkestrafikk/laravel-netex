@@ -11,11 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // None of these operations require any down/rollback tratment.
+        // None of these operations require any down/rollback treatment.
         $this->widenStops();
         $this->widenRoutedata();
-        $this->widenImports();
-        $this->widenActiveTables();
+        $this->widenMetaTables();
 
         // Create indices
         Schema::table('netex_stop_assignments', function (Blueprint $table) {
@@ -199,15 +198,12 @@ return new class extends Migration
         });
     }
 
-    protected function widenImports(): void
+    protected function widenMetaTables(): void
     {
         Schema::table('netex_imports', function (Blueprint $table) {
             $table->char('version')->nullable()->comment('Version attached to route set, if present')->change();
         });
-    }
 
-    protected function widenActiveTables(): void
-    {
         Schema::table('netex_active_journeys', function (Blueprint $table) {
             $table->char('id')->comment('Unique ID for journey/day')->change();
             $table->char('vehicle_journey_id')->comment('Journey ID')->change();
