@@ -3,6 +3,7 @@
 namespace TromsFylkestrafikk\Netex\Services;
 
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use TromsFylkestrafikk\Netex\Models\ActiveCall;
 use TromsFylkestrafikk\Netex\Models\ActiveJourney;
@@ -39,22 +40,35 @@ class RouteBase
      *
      * @return string
      */
-    protected static function makeJourneyId(array $journeyRecord)
+    protected static function makeJourneyId(array $journeyRecord): string
     {
         return implode(':', [
+            static::getCodespace($journeyRecord['vehicle_journey_id']),
             $journeyRecord['date'],
             $journeyRecord['line_private_code'],
             $journeyRecord['private_code'],
         ]);
     }
 
-    protected static function makeCallId(array $callRecord, $journeyRecord)
+    /**
+     * @param mixed[] $callRecord
+     * @param string|mixed[] $journeyRecord
+     */
+    protected static function makeCallId(array $callRecord, $journeyRecord): string
     {
         return (is_array($journeyRecord)
                 ? self::makeJourneyId($journeyRecord)
                 : $journeyRecord)
             . ':'
             . $callRecord['order'];
+    }
+
+    /**
+     * Extract the codespace portion of a NeTEx identifier
+     */
+    protected static function getCodespace(string $netexId): string
+    {
+        return explode(':', $netexId)[0];
     }
 
     /**
@@ -65,11 +79,11 @@ class RouteBase
      *
      * @param \stdClass $rawCall
      * @param string $property
-     * @param \Illuminate\Support\Carbon $prevCallStamp
+     * @param Carbon $prevCallStamp
      *
-     * @return \Illuminate\Support\Carbon
+     * @return Carbon
      */
-    protected static function expandCallTime(&$rawCall, $property, $prevCallStamp)
+    protected static function expandCallTime(&$rawCall, string $property, Carbon $prevCallStamp): Carbon
     {
         if (!$rawCall->$property) {
             return $prevCallStamp;
@@ -88,9 +102,9 @@ class RouteBase
      *
      * @param string $date
      *
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
-    protected static function getRawJourneys($date)
+    protected static function getRawJourneys(string $date)
     {
         return DB::table('netex_vehicle_journeys', 'journey')
             ->select([
@@ -121,9 +135,9 @@ class RouteBase
     /**
      * @param string $journeyRef
      *
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
-    protected static function getRawCalls($journeyRef)
+    protected static function getRawCalls(string $journeyRef): Collection
     {
         $ret = DB::table('netex_passing_times', 'ptime')
             ->select([
