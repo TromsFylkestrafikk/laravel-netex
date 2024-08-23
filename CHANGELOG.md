@@ -5,6 +5,9 @@
 ### Fixed
 - Improved detection of changes in imported data.
 
+### Changed
+- Imports now uses full NeTEx IDs in DB.
+
 ## [0.2.0] – 2024-04-18
 ### Added
 - Route sets now have overall import status, and per day activation
