@@ -13,6 +13,7 @@ use TromsFylkestrafikk\Netex\Console\Traits\LogAndPrint;
 use TromsFylkestrafikk\Netex\Models\Import;
 use TromsFylkestrafikk\Netex\Services\StopsActivator;
 use TromsFylkestrafikk\Netex\Services\RouteSet;
+use TromsFylkestrafikk\Netex\Services\RouteImporter;
 
 class RoutedataImport extends Command
 {
@@ -25,7 +26,6 @@ class RoutedataImport extends Command
      */
     protected $signature = 'netex:routedata-import
                             {path : Full path to directory contining route set XML files}
-                            {main : Filename of shared NeTEx XML data}
                             {--f|force : Force update, even if not modified}
                             {--s|no-sync-stops : Don\'t sync active stop places found in set}';
 
@@ -97,40 +97,32 @@ class RoutedataImport extends Command
 
         // Check files to be imported.
         $netexDir = realpath($this->argument('path'));
-        $mainXmlFile = $this->argument('main');
-        $this->routeSet = new RouteSet($netexDir, $mainXmlFile);
-        if (!$this->option('force') && !$this->routeSet->isModified()) {
+        $this->routeSet = new RouteSet($netexDir);
+        if (!$this->option('force') && !$this->routeSetIsModified($this->routeSet)) {
             $this->lpInfo("Route set not modified: Not importing. Use --force to override");
             return self::SUCCESS;
         }
         $this->setupProgressBar();
-        $this->import = Import::create([
-            'path' => $netexDir,
-            'md5' => $this->routeSet->getMd5(),
-            'size' => $this->routeSet->getSize(),
-            'files' => count($this->routeSet->getFiles()),
-            'import_status' => 'importing',
-            'message' => 'Importing core netex data.',
-        ]);
-
-        try {
-            $this->processFiles();
-            $this->finalizeImport();
-            $this->maybeSyncStops();
-        } catch (Exception $except) {
-            $this->import->fill(['import_status' => 'error', 'message' => $except->getMessage()])->save();
-            throw $except;
-        }
-
-        $this->import->fill(['import_status' => 'imported', 'message' => null])->save();
-        $this->lpInfo(sprintf(
-            "Route data import complete: Period: %s – %s. Version: %s. Lines processed: %d",
-            $this->parser->availableFrom,
-            $this->parser->availableTo,
-            $this->parser->version,
-            $this->linesProcessed
-        ));
+        $importer = new RouteImporter($this->routeSet);
+        $importer->importSet();
         return self::SUCCESS;
+    }
+
+    /**
+     * True if this set differ from existing, latest import.
+     *
+     * @return bool
+     */
+    protected function routeSetIsModified(RouteSet $set): bool
+    {
+        $lastImport = Import::latest()->first();
+        if (!$lastImport) {
+            return true;
+        }
+        if ($lastImport->import_status !== 'imported') {
+            return true;
+        }
+        return $lastImport->md5 !== $set->getMd5();
     }
 
     protected function setupProgressBar(): void
@@ -149,7 +141,7 @@ class RoutedataImport extends Command
     protected function processFiles(): void
     {
         $database = new NetexDatabase();
-        $this->parser = new NetexFileParser($this->routeSet->getSharedFilePath());
+        $this->parser = new NetexFileParser($this->routeSet->getSharedFiles()[0]);
 
         // Parse all XML files in route set.
         $files = $this->routeSet->getFiles();
@@ -161,7 +153,7 @@ class RoutedataImport extends Command
             $this->progressBar->setMessage("Processing $filename");
             $this->progressBar->advance();
             $database->resetStats();
-            if ($filename === $this->routeSet->getSharedFile()) {
+            if ($filename === $this->routeSet->getSharedFiles()[0]) {
                 $this->processSharedFile($database);
                 $this->sharedIsProcessed = true;
             } else {
