@@ -123,7 +123,7 @@ class NetexFileParser
                             $gis = $sxml
                                 ->projections
                                 ->LinkSequenceProjection
-                                ->children($ns['gis'])
+                                ->children('gis', true)
                                 ->LineString
                                 ->posList;
                             $posDimension = (int) $gis['srsDimension'];
