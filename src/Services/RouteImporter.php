@@ -9,7 +9,7 @@ use SimpleXMLElement;
 use TromsFylkestrafikk\Xml\ChristmasTreeParser;
 
 /**
- * Heavy lifting tools for stuffing NeTEx data into sql tables.
+ * Heavy lifting tool for stuffing NeTEx data into sql tables.
  */
 class RouteImporter
 {
@@ -92,7 +92,7 @@ class RouteImporter
                 // List of element paths to read. The last element must have a
                 // corresponding reader method. So if the last element is
                 // 'Operator', there must be a method named 'readOperator())'
-                $underFrames = [
+                $framesChildren = [
                     ['ResourceFrame', 'organisations', 'Operator'],
                     ['ServiceFrame', 'Network', 'groupsOfLines', 'GroupOfLines'],
                     ['ServiceFrame', 'destinationDisplays', 'DestinationDisplay'],
@@ -105,7 +105,7 @@ class RouteImporter
                     ['ServiceCalendarFrame', 'operatingPeriods', 'OperatingPeriod'],
                     ['ServiceCalendarFrame', 'dayTypeAssignments', 'DayTypeAssignment'],
                 ];
-                foreach ($underFrames as $children) {
+                foreach ($framesChildren as $children) {
                     $leafElement = end($children);
                     if (method_exists($this, "read$leafElement")) {
                         $reader->addCallback($children, function (ChristmasTreeParser $reader) use ($leafElement) {
@@ -244,16 +244,14 @@ class RouteImporter
         $this->dayTypeAssignments[$id]['Date'] = (string) $xml->Date;
     }
 
-    protected function read(ChristmasTreeParser $reader, SimpleXMLElement $xml): void
-    {
-        $this->dumpers['']->addRecord([
-            'id' => $xml['id'],
-        ]);
-    }
-
+    /**
+     * Write to DB an unrolled version of buffered calendar state.
+     */
     protected function writeCalendar(): void
     {
         $unrolled = [];
+        // Step 1: Re-structure daytype and dates into a two-dimmensional array
+        // with date and daytype as dimmensions and availability as value.
         foreach ($this->dayTypeAssignments as $dayTypeId => $assignment) {
             $dayTypeRef = $assignment['DayTypeRef'];
             if (!empty($assignment['Date'])) {
@@ -271,6 +269,8 @@ class RouteImporter
                 }
             }
         }
+
+        // Step 2: Dump available dates/daytypes to calendar table.
         foreach ($unrolled as $date => $dayTypes) {
             foreach ($dayTypes as $dayTypeRef => $isAvail) {
                 if ($isAvail) {
@@ -284,6 +284,11 @@ class RouteImporter
         }
     }
 
+    /**
+     * Given a period and daytype, unroll all dates within it.
+     *
+     * @return string[] List of ISO dates.
+     */
     protected function unrollDates($period, $dayType): array
     {
         $dates = [];
@@ -300,6 +305,15 @@ class RouteImporter
         return $dates;
     }
 
+    /**
+     * Convert NeTEx DaysOfWeek strings into a iso DOW array
+     *
+     * @see https://enturas.atlassian.net/wiki/spaces/PUBLIC/pages/728727624/framework#PropertyOfDay
+     *
+     * @param string $days
+     *
+     * @return string[] Unrolled list of all days, keyed by ISO day number
+     */
     protected function daysToDow(string $days): array
     {
         if (strlen($days) < 5) {
