@@ -88,33 +88,7 @@ class RouteImporter
             }
         )->withParents(
             ['PublicationDelivery', 'dataObjects', 'CompositeFrame', 'frames'],
-            function (ChristmasTreeParser $reader) {
-                // List of element paths to read. The last element must have a
-                // corresponding reader method. So if the last element is
-                // 'Operator', there must be a method named 'readOperator())'
-                $framesChildren = [
-                    ['ResourceFrame', 'organisations', 'Operator'],
-                    ['ServiceFrame', 'Network', 'groupsOfLines', 'GroupOfLines'],
-                    ['ServiceFrame', 'destinationDisplays', 'DestinationDisplay'],
-                    ['ServiceFrame', 'scheduledStopPoints', 'ScheduledStopPoint'],
-                    ['ServiceFrame', 'serviceLinks', 'ServiceLink'],
-                    ['ServiceFrame', 'stopAssignments', 'PassengerStopAssignment'],
-                    ['ServiceFrame', 'notices', 'Notice'],
-                    ['VehicleScheduleFrame', 'blocks', 'Block'],
-                    ['ServiceCalendarFrame', 'dayTypes', 'DayType'],
-                    ['ServiceCalendarFrame', 'operatingPeriods', 'OperatingPeriod'],
-                    ['ServiceCalendarFrame', 'dayTypeAssignments', 'DayTypeAssignment'],
-                ];
-                foreach ($framesChildren as $children) {
-                    $leafElement = end($children);
-                    if (method_exists($this, "read$leafElement")) {
-                        $reader->addCallback($children, function (ChristmasTreeParser $reader) use ($leafElement) {
-                            $xml = $reader->expandSimpleXml();
-                            $this->{"read$leafElement"}($reader, $xml);
-                        });
-                    }
-                }
-            }
+            fn ($reader) => $this->mapFramesReaders($reader)
         )->parse();
 
         foreach ($this->dumpers as $dumper) {
@@ -130,109 +104,136 @@ class RouteImporter
         return $this;
     }
 
-    protected function readOperator(ChristmasTreeParser $reader, SimpleXMLElement $xml): void
+    protected function mapFramesReaders(ChristmasTreeParser $reader): void
     {
-        $this->dumpers['Operator']->addRecord([
+        // List of element paths to read. The last element must have a
+        // corresponding reader method. So if the last element is
+        // 'Operator', there must be a method named 'readOperator())'
+        $framesChildren = [
+            ['ResourceFrame', 'organisations', 'Operator'],
+            ['ServiceFrame', 'Network', 'groupsOfLines', 'GroupOfLines'],
+            ['ServiceFrame', 'destinationDisplays', 'DestinationDisplay'],
+            ['ServiceFrame', 'scheduledStopPoints', 'ScheduledStopPoint'],
+            ['ServiceFrame', 'serviceLinks', 'ServiceLink'],
+            ['ServiceFrame', 'stopAssignments', 'PassengerStopAssignment'],
+            ['ServiceFrame', 'notices', 'Notice'],
+            ['VehicleScheduleFrame', 'blocks', 'Block'],
+            ['ServiceCalendarFrame', 'dayTypes', 'DayType'],
+            ['ServiceCalendarFrame', 'operatingPeriods', 'OperatingPeriod'],
+            ['ServiceCalendarFrame', 'dayTypeAssignments', 'DayTypeAssignment'],
+        ];
+        foreach ($framesChildren as $children) {
+            $leafElement = end($children);
+            if (!method_exists($this, "read$leafElement")) {
+                continue;
+            }
+            $reader->addCallback($children, function (ChristmasTreeParser $reader) use ($leafElement) {
+                $xml = $reader->expandSimpleXml();
+                $record = $this->{"read$leafElement"}($xml);
+                if (! $record) {
+                    return;
+                }
+                $this->dumpers[$leafElement]->addRecord($record);
+            });
+        }
+    }
+
+    protected function readOperator(SimpleXMLElement $xml): array
+    {
+        return [
             'id' => $xml['id'],
             'company_number' => $xml->CompanyNumber,
             'legal_name' => $xml->LegalName,
             'name' => $xml->Name,
-        ]);
+        ];
     }
 
-    protected function readGroupOfLines(ChristmasTreeParser $reader, SimpleXMLElement $xml): void
+    protected function readGroupOfLines(SimpleXMLElement $xml): array
     {
-        $this->dumpers['GroupOfLines']->addRecord([
-            'id' => $xml['id'],
-            'name' => $xml->Name,
-        ]);
+        return ['id' => $xml['id'], 'name' => $xml->Name];
     }
 
-    protected function readDestinationDisplay(ChristmasTreeParser $reader, SimpleXMLElement $xml): void
+    protected function readDestinationDisplay(SimpleXMLElement $xml): array
     {
-        $this->dumpers['DestinationDisplay']->addRecord([
-            'id' => $xml['id'],
-            'front_text' => $xml->FrontText,
-        ]);
+        return ['id' => $xml['id'], 'front_text' => $xml->FrontText];
     }
 
-    protected function readScheduledStopPoint(ChristmasTreeParser $reader, SimpleXMLElement $xml): void
+    protected function readScheduledStopPoint(SimpleXMLElement $xml): array
     {
-        $this->dumpers['ScheduledStopPoint']->addRecord([
-            'id' => $xml['id'],
-            'name' => $xml->Name,
-        ]);
+        return ['id' => $xml['id'], 'name' => $xml->Name];
     }
 
-    protected function readServiceLink(ChristmasTreeParser $reader, SimpleXMLElement $xml): void
+    protected function readServiceLink(SimpleXMLElement $xml): array|null
     {
         if (!isset($xml->projections->LinkSequenceProjection)) {
-            return;
+            return null;
         }
         $proj = $xml->projections->LinkSequenceProjection->children('http://www.opengis.net/gml/3.2');
         if ($proj->count() < 1) {
-            return;
+            return null;
         }
-        $this->dumpers['ServiceLink']->addRecord([
+        return [
             'id' => $xml['id'],
             'distance' => $xml->Distance,
             'srs_dimension' => $proj->LineString->posList->attributes()['srsDimension'],
             'count' => $proj->LineString->posList->attributes()['count'],
             'pos_list' => $proj->LineString->posList,
-        ]);
+        ];
     }
 
-    protected function readPassengerStopAssignment(ChristmasTreeParser $reader, SimpleXMLElement $xml): void
+    protected function readPassengerStopAssignment(SimpleXMLElement $xml): array
     {
-        $this->dumpers['PassengerStopAssignment']->addRecord([
+        return [
             'id' => $xml['id'],
             'order' => $xml['order'],
             'stop_point_ref' => $xml->ScheduledStopPointRef['ref'],
             'quay_ref' => $xml->QuayRef['ref'],
-        ]);
+        ];
     }
 
-    protected function readNotice(ChristmasTreeParser $reader, SimpleXMLElement $xml): void
+    protected function readNotice(SimpleXMLElement $xml): array
     {
-        $this->dumpers['Notice']->addRecord([
+        return [
             'id' => $xml['id'],
             'text' => $xml->Text,
             'public_code' => $xml->PublicCode,
-        ]);
+        ];
     }
 
-    protected function readBlock(ChristmasTreeParser $reader, SimpleXMLElement $xml): void
+    protected function readBlock(SimpleXMLElement $xml): array
     {
         $blockId = $xml['id'];
-        $this->dumpers['Block']->addRecord([
-            'id' => $blockId,
-            'private_code' => $xml->PrivateCode,
-            'calendar_ref' => $xml->dayTypes->DayTypeRef['ref'],
-        ]);
         foreach ($xml->journeys->VehicleJourneyRef as $journeyRef) {
             $this->dumpers['BlockJourneyRef']->addRecord([
                 'vehicle_block_ref' => $blockId,
                 'vehicle_journey_ref' => $journeyRef['ref'],
             ]);
         }
+        return [
+            'id' => $blockId,
+            'private_code' => $xml->PrivateCode,
+            'calendar_ref' => $xml->dayTypes->DayTypeRef['ref'],
+        ];
     }
 
-    protected function readDayType(ChristmasTreeParser $reader, SimpleXMLElement $xml): void
+    protected function readDayType(SimpleXMLElement $xml): null
     {
         $id = (string) $xml['id'];
         $this->dayTypes[$id]['DaysOfWeek'] = isset($xml->properties)
            ? ((string) $xml->properties->PropertyOfDay->DaysOfWeek)
            : null;
+        return null;
     }
 
-    protected function readOperatingPeriod(ChristmasTreeParser $reader, SimpleXMLElement $xml): void
+    protected function readOperatingPeriod(SimpleXMLElement $xml): null
     {
         $id = (string) $xml['id'];
         $this->operatingPeriods[$id]['FromDate'] = $xml->FromDate;
         $this->operatingPeriods[$id]['ToDate'] = $xml->ToDate;
+        return null;
     }
 
-    protected function readDayTypeAssignment(ChristmasTreeParser $reader, SimpleXMLElement $xml): void
+    protected function readDayTypeAssignment(SimpleXMLElement $xml): null
     {
         $id = (string) $xml['id'];
         $this->dayTypeAssignments[$id]['order'] = (int) $xml['order'];
@@ -242,6 +243,7 @@ class RouteImporter
             : null;
         $this->dayTypeAssignments[$id]['DayTypeRef'] = (string) $xml->DayTypeRef['ref'];
         $this->dayTypeAssignments[$id]['Date'] = (string) $xml->Date;
+        return null;
     }
 
     /**
@@ -258,15 +260,16 @@ class RouteImporter
                 $unrolled[$assignment['Date']][$dayTypeRef] = $assignment['isAvailable'];
                 continue;
             }
-            if (!empty($assignment['OperatingPeriodRef'])) {
-                foreach (
-                    $this->unrollDates(
-                        $this->operatingPeriods[$assignment['OperatingPeriodRef']],
-                        $this->dayTypes[$dayTypeRef]
-                    ) as $date
-                ) {
-                        $unrolled[$date][$dayTypeRef] = $assignment['isAvailable'];
-                }
+            if (empty($assignment['OperatingPeriodRef'])) {
+                continue;
+            }
+            foreach (
+                $this->unrollDates(
+                    $this->operatingPeriods[$assignment['OperatingPeriodRef']],
+                    $this->dayTypes[$dayTypeRef]
+                ) as $date
+            ) {
+                $unrolled[$date][$dayTypeRef] = $assignment['isAvailable'];
             }
         }
 
