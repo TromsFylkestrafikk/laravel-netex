@@ -3,7 +3,6 @@
 namespace TromsFylkestrafikk\Netex\Services\RouteImporter;
 
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Log;
 use SimpleXMLElement;
 
 /**
@@ -209,13 +208,14 @@ class SharedFileImporter extends NetexImporterBase
         // Step 2: Dump available dates/daytypes to calendar table.
         foreach ($unrolled as $date => $dayTypes) {
             foreach ($dayTypes as $dayTypeRef => $isAvail) {
-                if ($isAvail) {
-                    $this->dumpers['Calendar']->addRecord([
-                        'id' => "$date-$dayTypeRef",
-                        'date' => $date,
-                        'ref' => $dayTypeRef,
-                    ]);
+                if (!$isAvail) {
+                    continue;
                 }
+                $this->dumpers['Calendar']->addRecord([
+                    'id' => "$date-$dayTypeRef",
+                    'date' => $date,
+                    'ref' => $dayTypeRef,
+                ]);
             }
         }
     }
@@ -231,7 +231,6 @@ class SharedFileImporter extends NetexImporterBase
         $fromDate = new Carbon($period['FromDate']);
         $toDate = new Carbon($period['ToDate']);
         $daysOfWeek = $this->daysToDow($dayType['DaysOfWeek']);
-        Log::debug(sprintf("%s => %s", $dayType['DaysOfWeek'], implode(', ', $daysOfWeek)));
         while ($fromDate->lessThanOrEqualTo($toDate)) {
             if (!empty($daysOfWeek[$fromDate->dayOfWeekIso])) {
                 $dates[] = $fromDate->toDateString();

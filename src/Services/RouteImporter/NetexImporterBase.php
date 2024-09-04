@@ -2,7 +2,7 @@
 
 namespace TromsFylkestrafikk\Netex\Services\RouteImporter;
 
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use TromsFylkestrafikk\Netex\Services\DbBulkInsert;
 use TromsFylkestrafikk\Xml\ChristmasTreeParser;
 
@@ -65,7 +65,6 @@ abstract class NetexImporterBase
             if (empty($handler['table'])) {
                 continue;
             }
-            DB::table($handler['table'])->truncate();
             $this->dumpers[$name] = new DbBulkInsert($handler['table']);
         }
         $reader = new ChristmasTreeParser();
