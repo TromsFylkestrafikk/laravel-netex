@@ -29,6 +29,10 @@ class LineFileImporter extends NetexImporterBase
             'table' => 'netex_vehicle_journeys',
         ],
         'TimetabledPassingTime' => ['table' => 'netex_passing_times'],
+        'NoticeAssignment' => [
+            'path' => ['TimetableFrame', 'noticeAssignments', 'NoticeAssignment'],
+            'table' => 'netex_notice_assignments',
+        ],
     ];
 
     protected function readRoute(SimpleXMLElement $xml): array
@@ -110,6 +114,15 @@ class LineFileImporter extends NetexImporterBase
             'operator_ref' => $xml->OperatorRef['ref'],
             'line_ref' => $xml->LineRef['ref'],
             'calendar_ref' => $xml->dayTypes->DayTypeRef['ref'],
+        ];
+    }
+
+    protected function readNoticeAssignment(SimpleXMLElement $xml): array
+    {
+        return [
+            'id' => $xml['id'],
+            'notice_ref' => (string) $xml->NoticeRef['ref'],
+            'notice_obj_ref' => (string) $xml->NoticedObjectRef['ref'],
         ];
     }
 }
