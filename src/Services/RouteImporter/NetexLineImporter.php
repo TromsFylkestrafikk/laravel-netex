@@ -7,7 +7,7 @@ use SimpleXMLElement;
 /**
  * Import a NeTEx shared data file.
  */
-class LineFileImporter extends NetexImporterBase
+class NetexLineImporter extends NetexImporterBase
 {
     protected $frames = [
         'Route' => [

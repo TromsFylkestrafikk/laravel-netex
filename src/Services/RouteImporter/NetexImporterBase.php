@@ -2,7 +2,6 @@
 
 namespace TromsFylkestrafikk\Netex\Services\RouteImporter;
 
-use Illuminate\Support\Facades\Log;
 use TromsFylkestrafikk\Netex\Services\DbBulkInsert;
 use TromsFylkestrafikk\Xml\ChristmasTreeParser;
 
@@ -24,7 +23,7 @@ abstract class NetexImporterBase
     public $codespaces = [];
 
     /**
-     * List of data frames to act upon.
+     * List of elements under <frames> to act upon.
      *
      * The key is the method suffix name used for extraction of DB records. The
      * actual method name will then be "read" . $key. The method signature for
@@ -52,6 +51,11 @@ abstract class NetexImporterBase
 
     final public function __construct(protected string $xmlFile)
     {
+    }
+
+    public function getFile(): string
+    {
+        return $this->xmlFile;
     }
 
     public static function importFile(string $xmlFile): NetexImporterBase

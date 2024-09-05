@@ -8,7 +8,7 @@ use SimpleXMLElement;
 /**
  * Import a NeTEx shared data file.
  */
-class SharedFileImporter extends NetexImporterBase
+class NetexSharedImporter extends NetexImporterBase
 {
     /**
      * List of data frames to act upon in NeTEx data.
@@ -63,7 +63,7 @@ class SharedFileImporter extends NetexImporterBase
     protected $operatingPeriods = [];
     protected $dayTypeAssignments = [];
 
-    public function import(): SharedFileImporter
+    public function import(): NetexSharedImporter
     {
         parent::import();
         $this->writeCalendar();
@@ -72,6 +72,9 @@ class SharedFileImporter extends NetexImporterBase
 
     protected function readOperator(SimpleXMLElement $xml): array
     {
+        // Hack, but set the version of this route set to the version attribute
+        // found here.
+        $this->version = (string) $xml['version'];
         return [
             'id' => $xml['id'],
             'company_number' => $xml->CompanyNumber,
