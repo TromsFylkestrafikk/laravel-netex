@@ -19,21 +19,6 @@ use TromsFylkestrafikk\Xml\ChristmasTreeParser;
 class RouteImporter
 {
     /**
-     * @var int
-     */
-    protected $fileCounter;
-
-    /**
-     * @var NetexImporterBase
-     */
-    protected $sharedImporter = null;
-
-    /**
-     * @var Import;
-     */
-    protected $import = null;
-
-    /**
      * List of tables used during import
      */
     public static $tables = [
@@ -62,6 +47,31 @@ class RouteImporter
     ];
 
     /**
+     * @var Carbon|null
+     */
+    public $availableFrom = null;
+
+    /**
+     * @var Carbon|null
+     */
+    public $availableTo = null;
+
+    /**
+     * @var int
+     */
+    protected $fileCounter;
+
+    /**
+     * @var NetexImporterBase
+     */
+    protected $sharedImporter = null;
+
+    /**
+     * @var Import;
+     */
+    protected $import = null;
+
+    /**
      * @var callable[]
      */
     protected $processedHandlers = [];
@@ -77,6 +87,7 @@ class RouteImporter
     public function importSet(): RouteImporter
     {
         $this->fileCounter = 0;
+        Log::info(sprintf("[RouteImporter]: Importing NeTEx files in directory: %s", $this->set->getPath()));
         foreach (self::$tables as $tableName) {
             DB::table($tableName)->truncate();
         }
@@ -92,13 +103,13 @@ class RouteImporter
 
         try {
             foreach ($this->set->getSharedFiles() as $sharedFile) {
-                Log::debug(sprintf('Writing shared file %s', $sharedFile));
+                Log::debug(sprintf('[RouteImporter]: Importing shared file: %s', basename($sharedFile)));
                 $this->sharedImporter = NetexSharedImporter::importFile($sharedFile);
                 $this->onFileImport($this->sharedImporter);
             }
 
             foreach ($this->set->getLineFiles() as $lineFile) {
-                Log::debug(sprintf('Writing line file %s', $lineFile));
+                Log::debug(sprintf('[RouteImporter]: Importing line file: %s', basename($lineFile)));
                 $this->onFileImport(NetexLineImporter::importFile($lineFile));
             }
             $this->finalizeImport();
@@ -106,6 +117,7 @@ class RouteImporter
             $this->import->fill(['import_status' => 'error', 'message' => $except->getMessage()])->save();
             throw $except;
         }
+        Log::info(sprintf("[RouteImporter]: Successfully imported %d files", $this->fileCounter));
         return $this;
     }
 
@@ -118,14 +130,13 @@ class RouteImporter
     {
         $lastImport = Import::latest()->first();
         if (!$lastImport) {
-            Log::warning("No previous import exist!");
+            Log::notice("[RouteImporter]: No previous import exist!");
             return false;
         }
         if ($lastImport->import_status !== 'imported') {
-            Log::warning("Last import was not a success!");
+            Log::notice("[RouteImporter]: Last import was not a success!");
             return false;
         }
-        Log::debug(sprintf("existing: %s, new: %s", $lastImport->md5, $this->set->getMd5()));
         return $lastImport->md5 === $this->set->getMd5();
     }
 
@@ -142,16 +153,12 @@ class RouteImporter
 
     protected function finalizeImport(): void
     {
-        if (
-            $this->sharedImporter === null
-            || !$this->sharedImporter->availableFrom
-            || !$this->sharedImporter->availableTo
-        ) {
+        if ($this->sharedImporter === null || !$this->availableFrom || !$this->availableTo) {
             throw new Exception("Shared data file is missing or lacks vital info");
         }
         $this->import->fill([
-            'available_from' => new Carbon($this->sharedImporter->availableFrom),
-            'available_to' =>  new Carbon($this->sharedImporter->availableTo),
+            'available_from' => $this->availableFrom,
+            'available_to' =>  $this->availableTo,
             'version' => $this->sharedImporter->version,
             'import_status' => 'imported',
             'message' => null,
@@ -161,6 +168,12 @@ class RouteImporter
     protected function onFileImport(NetexImporterBase $importer): void
     {
         $this->fileCounter++;
+        if (!$this->availableFrom || $this->availableFrom->isAfter($importer->availableFrom)) {
+            $this->availableFrom = new Carbon($importer->availableFrom);
+        }
+        if (!$this->availableTo || $this->availableTo->isBefore($importer->availableTo)) {
+            $this->availableTo = new Carbon($importer->availableTo);
+        }
         $this->invokeProcessedHandlers($importer);
     }
 

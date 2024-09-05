@@ -78,7 +78,7 @@ class RoutedataImport extends Command
     public function handle(StopsActivator $stopsActivator): int
     {
         $this->stopsActivator = $stopsActivator;
-        $this->lpInfo('Importing NeTEx route data files...');
+        $this->info('Importing NeTEx route data files...');
 
         // Check files to be imported.
         $netexDir = realpath($this->argument('path'));
@@ -95,6 +95,13 @@ class RoutedataImport extends Command
         })->importSet();
         $this->progressBar->finish();
         $this->newLine();
+        $this->info(sprintf(
+            "Route data import complete: Period: %s – %s. Version: %s. Lines processed: %d",
+            $this->importer->getImport()->available_from,
+            $this->importer->getImport()->available_to,
+            $this->importer->getImport()->version,
+            $this->linesProcessed
+        ));
         return self::SUCCESS;
     }
 

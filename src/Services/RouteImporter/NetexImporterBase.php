@@ -77,8 +77,8 @@ abstract class NetexImporterBase
             ['PublicationDelivery', 'dataObjects', 'CompositeFrame', 'validityConditions', 'AvailabilityCondition'],
             function (ChristmasTreeParser $reader) {
                 $xml = $reader->expandSimpleXml();
-                $this->availableFrom = $xml->FromDate;
-                $this->availableTo = $xml->ToDate;
+                $this->availableFrom = (string) $xml->FromDate;
+                $this->availableTo = (string) $xml->ToDate;
             }
         )->withParents(
             ['PublicationDelivery', 'dataObjects', 'CompositeFrame', 'frames'],
