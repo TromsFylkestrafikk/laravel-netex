@@ -7,6 +7,8 @@
 
 ### Changed
 - Imports now uses full NeTEx IDs in DB.
+- Refactored import mechanism to use ChristmasTreeParser. It's a
+  service now.
 
 ## [0.2.0] – 2024-04-18
 ### Added
