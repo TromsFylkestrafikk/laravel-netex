@@ -85,12 +85,12 @@ class RoutedataImport extends Command
         $this->routeSet = new RouteSet($netexDir);
         $this->importer = new RouteImporter($this->routeSet);
         if (!$this->option('force') && $this->importer->isImported()) {
-            $this->lpInfo("Route set already imported: Not importing. Use --force to override");
+            $this->info("Route set already imported: Not importing. Use --force to override");
             return self::SUCCESS;
         }
         $this->setupProgressBar();
-        $this->importer->addProcessedHandler(function (NetexImporterBase $importer, int $count) {
-            $this->progressBar->setMessage(sprintf("%s imported", basename($importer->getFile())));
+        $this->importer->addFileProcessedHandler(function (NetexImporterBase $importer, int $count) {
+            $this->progressBar->setMessage(sprintf("Imported %s", basename($importer->getFile())));
             $this->progressBar->advance();
         })->importSet();
         $this->progressBar->finish();
@@ -110,6 +110,10 @@ class RoutedataImport extends Command
         // Progress bar setup. Initial settings used for "Parse main file".
         ProgressBar::setFormatDefinition('custom', '%percent%% [%bar%]  %elapsed% - %message%');
         $this->progressBar = $this->output->createProgressBar(count($this->routeSet->getFiles()));
+        $this->progressBar->setRedrawFrequency(1);
+        $this->progressBar->minSecondsBetweenRedraws(0.05);
         $this->progressBar->setFormat('custom');
+        $this->progressBar->setMessage('Importing …');
+        $this->progressBar->start();
     }
 }

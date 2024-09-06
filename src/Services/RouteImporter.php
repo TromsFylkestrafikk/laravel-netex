@@ -145,7 +145,7 @@ class RouteImporter
         return $this->import;
     }
 
-    public function addProcessedHandler(callable $callback): RouteImporter
+    public function addFileProcessedHandler(callable $callback): RouteImporter
     {
         $this->processedHandlers[] = $callback;
         return $this;
