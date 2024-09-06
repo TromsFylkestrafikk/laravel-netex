@@ -4,7 +4,6 @@ namespace TromsFylkestrafikk\Netex\Console;
 
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
-use TromsFylkestrafikk\Netex\Console\Traits\LogAndPrint;
 use TromsFylkestrafikk\Netex\Services\StopsActivator;
 use TromsFylkestrafikk\Netex\Services\RouteSet;
 use TromsFylkestrafikk\Netex\Services\RouteImporter;
@@ -12,8 +11,6 @@ use TromsFylkestrafikk\Netex\Services\RouteImporter\NetexImporterBase;
 
 class RoutedataImport extends Command
 {
-    use LogAndPrint;
-
     /**
      * The name and signature of the console command.
      *
@@ -78,7 +75,7 @@ class RoutedataImport extends Command
     public function handle(StopsActivator $stopsActivator): int
     {
         $this->stopsActivator = $stopsActivator;
-        $this->info('Importing NeTEx route data files...');
+        $this->line('Importing NeTEx route data files...');
 
         // Check files to be imported.
         $netexDir = realpath($this->argument('path'));
@@ -95,6 +92,8 @@ class RoutedataImport extends Command
         })->importSet();
         $this->progressBar->finish();
         $this->newLine();
+        $this->line("Syncing active stops …");
+        $this->stopsActivator->update();
         $this->info(sprintf(
             "Route data import complete: Period: %s – %s. Version: %s. Lines processed: %d",
             $this->importer->getImport()->available_from,

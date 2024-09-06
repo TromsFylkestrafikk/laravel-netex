@@ -67,7 +67,7 @@ class RouteImporter
     protected $sharedImporter = null;
 
     /**
-     * @var Import;
+     * @var Import|null;
      */
     protected $import = null;
 
