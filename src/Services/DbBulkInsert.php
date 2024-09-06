@@ -4,7 +4,6 @@ namespace TromsFylkestrafikk\Netex\Services;
 
 use InvalidArgumentException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Add DB records in bulk.
@@ -31,6 +30,16 @@ class DbBulkInsert
     /**
      * @var array
      */
+    protected $idColumns;
+
+    /**
+     * @var array
+     */
+    protected $uniqueCols;
+
+    /**
+     * @var array
+     */
     protected $records;
 
     /**
@@ -46,6 +55,13 @@ class DbBulkInsert
     protected $recordsWritten;
 
     /**
+     * Dummy run. Dont write to db.
+     *
+     * @var bool
+     */
+    protected $isDummy;
+
+    /**
      * Number of buffered records before write.
      *
      * @var int
@@ -54,7 +70,7 @@ class DbBulkInsert
 
     public function __construct(string $table, $method = 'insert')
     {
-        $allowedMethods = ['insert', 'insertOrIgnore'];
+        $allowedMethods = ['insert', 'insertOrIgnore', 'upsert'];
         if (!in_array($method, $allowedMethods)) {
             throw new InvalidArgumentException(sprintf(
                 '%s: $method must be one of: %s',
@@ -64,13 +80,31 @@ class DbBulkInsert
         }
         $this->table = $table;
         $this->method = $method;
+        $this->idColumns = [];
         $this->recordsWritten = 0;
+        $this->isDummy = false;
         $this->resetBuffer();
     }
 
     public function __destruct()
     {
         $this->flush();
+    }
+
+    public function getTable(): string
+    {
+        return $this->table;
+    }
+
+    /**
+     * @param string[] $columns Columns to identify unique records.
+     *
+     * @return $this
+     */
+    public function unique(array $columns)
+    {
+        $this->uniqueCols = $columns;
+        return $this;
     }
 
     /**
@@ -95,7 +129,16 @@ class DbBulkInsert
      */
     public function flush()
     {
-        DB::table($this->table)->{$this->method}($this->records);
+        if (!$this->recordCount) {
+            return $this;
+        }
+        if (! $this->isDummy) {
+            if ($this->method === 'upsert') {
+                DB::table($this->table)->upsert($this->records, $this->uniqueCols);
+            } else {
+                DB::table($this->table)->{$this->method}($this->records);
+            }
+        }
         $this->recordsWritten += $this->recordCount;
         $this->resetBuffer();
         return $this;
@@ -104,6 +147,15 @@ class DbBulkInsert
     public function getRecordsWritten()
     {
         return $this->recordsWritten;
+    }
+
+    /**
+     * Dummy run. Don't write anything to DB.
+     */
+    public function dummy(bool $isDummy = true): DbBulkInsert
+    {
+        $this->isDummy = $isDummy;
+        return $this;
     }
 
     protected function resetBuffer()
