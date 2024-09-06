@@ -140,11 +140,19 @@ class RouteImporter
         return $lastImport->md5 === $this->set->getMd5();
     }
 
+    /**
+     * Get import model/report.
+     *
+     * Only useful after successful imports.
+     */
     public function getImport(): Import
     {
         return $this->import;
     }
 
+    /**
+     * Add callback after each processed and imported XML file.
+     */
     public function addFileProcessedHandler(callable $callback): RouteImporter
     {
         $this->processedHandlers[] = $callback;

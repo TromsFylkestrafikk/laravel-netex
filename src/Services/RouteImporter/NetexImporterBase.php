@@ -53,16 +53,27 @@ abstract class NetexImporterBase
     {
     }
 
+    /**
+     * Get the very file this importer is working with.
+     */
     public function getFile(): string
     {
         return $this->xmlFile;
     }
 
+    /**
+     * Shorthand constructor for importing a file.
+     *
+     * @param string $xmlFile Full path to XML file
+     */
     public static function importFile(string $xmlFile): NetexImporterBase
     {
         return (new static($xmlFile))->import();
     }
 
+    /**
+     * Run import.
+     */
     public function import(): NetexImporterBase
     {
         foreach ($this->frames as $name => $handler) {
