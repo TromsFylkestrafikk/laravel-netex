@@ -20,7 +20,7 @@ return new class extends Migration
 
         Schema::create('netex_dated_service_journeys', function (Blueprint $table) {
             $table->char('id')->primary()->comment('Neted ID of dated service journey');
-            $table->char('service_journey_ref')->comment('Relation to netex_vehicle_journeys.id');
+            $table->char('service_journey_ref')->index()->comment('Relation to netex_vehicle_journeys.id');
             $table->char('operating_day_ref')->comment('Relation to nextex_operating_days.id');
         });
 
