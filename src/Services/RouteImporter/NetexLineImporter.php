@@ -28,6 +28,10 @@ class NetexLineImporter extends NetexImporterBase
             'path' => ['TimetableFrame', 'vehicleJourneys', 'ServiceJourney'],
             'table' => 'netex_vehicle_journeys',
         ],
+        'DatedServiceJourney' => [
+            'path' => ['TimetableFrame', 'vehicleJourneys', 'DatedServiceJourney'],
+            'table' => 'netex_dated_service_journeys',
+        ],
         'TimetabledPassingTime' => ['table' => 'netex_passing_times'],
         'NoticeAssignment' => [
             'path' => ['TimetableFrame', 'noticeAssignments', 'NoticeAssignment'],
@@ -93,7 +97,7 @@ class NetexLineImporter extends NetexImporterBase
         ];
     }
 
-    protected function readServiceJourney(SimpleXMLElement $xml): array
+    protected function readServiceJourney(SimpleXMLElement $xml): array|null
     {
         $journeyId = (string) $xml['id'];
 
@@ -113,7 +117,16 @@ class NetexLineImporter extends NetexImporterBase
             'journey_pattern_ref' => $xml->JourneyPatternRef['ref'],
             'operator_ref' => $xml->OperatorRef['ref'],
             'line_ref' => $xml->LineRef['ref'],
-            'calendar_ref' => $xml->dayTypes->DayTypeRef['ref'],
+            'calendar_ref' => isset($xml->dayTypes) ? $xml->dayTypes->DayTypeRef['ref'] : null,
+        ];
+    }
+
+    protected function readDatedServiceJourney(SimpleXMLElement $xml): array
+    {
+        return [
+            'id' => $xml['id'],
+            'service_journey_ref' => $xml->ServiceJourneyRef['ref'],
+            'operating_day_ref' => $xml->OperatingDayRef['ref'],
         ];
     }
 
