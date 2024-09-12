@@ -114,7 +114,7 @@ class RouteBase
     {
         return self::buildRawJourneysQuery($date)->whereIn(
             'journey.calendar_ref',
-            function (\Illuminate\Database\Query\Builder $query) use ($date) {
+            function (Builder $query) use ($date) {
                 $query->select('ref')->from('netex_calendar')->whereDate('date', '=', $date);
             }
         )->get();
