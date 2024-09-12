@@ -24,6 +24,7 @@ class NetexLineImporter extends NetexImporterBase
             'table' => 'netex_journey_patterns',
         ],
         'JourneyPatternStopPoint' => ['table' => 'netex_journey_pattern_stop_point'],
+        'JourneyPatternLinks' => ['table' => 'netex_journey_pattern_link'],
         'ServiceJourney' => [
             'path' => ['TimetableFrame', 'vehicleJourneys', 'ServiceJourney'],
             'table' => 'netex_vehicle_journeys',
@@ -87,6 +88,15 @@ class NetexLineImporter extends NetexImporterBase
                 'destination_display_ref' => $point->DestinationDisplayRef
                     ? ($point->DestinationDisplayRef['ref'])
                     : null,
+            ]);
+        }
+
+        foreach ($xml->linksInSequence->ServiceLinkInJourneyPattern as $link) {
+            $this->dumpers['JourneyPatternLinks']->addRecord([
+                'id' => $link['id'],
+                'journey_pattern_ref' => $jpId,
+                'order' => $link->attributes()->order,
+                'service_link_ref' => $link->ServiceLinkRef['ref'],
             ]);
         }
 

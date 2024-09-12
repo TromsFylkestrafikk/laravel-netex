@@ -116,7 +116,10 @@ class RouteImporter
             }
             $this->finalizeImport();
         } catch (Exception $except) {
-            $this->import->fill(['import_status' => 'error', 'message' => $except->getMessage()])->save();
+            $this->import->fill([
+                'import_status' => 'error',
+                'message' => substr($except->getMessage(), 0, 255),
+            ])->save();
             throw $except;
         }
         Log::info(sprintf("[RouteImporter]: Successfully imported %d files", $this->fileCounter));
