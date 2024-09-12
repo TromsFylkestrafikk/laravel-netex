@@ -51,6 +51,10 @@ class NetexSharedImporter extends NetexImporterBase
         'BlockJourneyRef'   => ['table' => 'netex_vehicle_schedules'],
         'Calendar'          => ['table' => 'netex_calendar'],
         'DayType'           => ['path' => ['ServiceCalendarFrame', 'dayTypes', 'DayType']],
+        'OperatingDay'      => [
+            'path' => ['ServiceCalendarFrame', 'operatingDays', 'OperatingDay'],
+            'table' => 'netex_operating_days',
+        ],
         'OperatingPeriod'   => ['path' => ['ServiceCalendarFrame', 'operatingPeriods', 'OperatingPeriod']],
         'DayTypeAssignment' => ['path' => ['ServiceCalendarFrame', 'dayTypeAssignments', 'DayTypeAssignment']],
 
@@ -151,7 +155,15 @@ class NetexSharedImporter extends NetexImporterBase
         ];
     }
 
-    protected function readDayType(SimpleXMLElement $xml): null
+    protected function readOperatingDay(SimpleXMLElement $xml): array
+    {
+        return [
+            'id' => $xml['id'],
+            'calendar_date' => $xml->CalendarDate,
+        ];
+    }
+
+    protected function readDayType(SimpleXMLElement $xml): array|null
     {
         $id = (string) $xml['id'];
         $this->dayTypes[$id]['DaysOfWeek'] = isset($xml->properties)
@@ -160,7 +172,7 @@ class NetexSharedImporter extends NetexImporterBase
         return null;
     }
 
-    protected function readOperatingPeriod(SimpleXMLElement $xml): null
+    protected function readOperatingPeriod(SimpleXMLElement $xml): array|null
     {
         $id = (string) $xml['id'];
         $this->operatingPeriods[$id]['FromDate'] = $xml->FromDate;
@@ -168,7 +180,7 @@ class NetexSharedImporter extends NetexImporterBase
         return null;
     }
 
-    protected function readDayTypeAssignment(SimpleXMLElement $xml): null
+    protected function readDayTypeAssignment(SimpleXMLElement $xml): array|null
     {
         $id = (string) $xml['id'];
         $this->dayTypeAssignments[$id]['order'] = (int) $xml['order'];

@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- Support for DatedServiceJourney.
+
 ### Fixed
 - Improved detection of changes in imported data.
 

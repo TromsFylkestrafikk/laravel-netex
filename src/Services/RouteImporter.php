@@ -30,12 +30,14 @@ class RouteImporter
         'netex_stop_assignments',
         'netex_destination_displays',
         'netex_service_links',
+        'netex_operating_days',
         'netex_vehicle_schedules',
         'netex_vehicle_blocks',
         'netex_notices',
 
         // Line data tables
         'netex_vehicle_journeys',
+        'netex_dated_service_journeys',
         'netex_passing_times',
         'netex_journey_patterns',
         'netex_journey_pattern_stop_point',

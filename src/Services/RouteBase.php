@@ -2,6 +2,7 @@
 
 namespace TromsFylkestrafikk\Netex\Services;
 
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -104,7 +105,31 @@ class RouteBase
      *
      * @return Collection
      */
-    protected static function getRawJourneys(string $date)
+    protected static function getRawJourneys(string $date): Collection
+    {
+        return self::getRawDatedServiceJourneys($date)->merge(self::getRawCalendarJourneys($date));
+    }
+
+    protected static function getRawCalendarJourneys(string $date): Collection
+    {
+        return self::buildRawJourneysQuery($date)->whereIn(
+            'journey.calendar_ref',
+            function (Builder $query) use ($date) {
+                $query->select('ref')->from('netex_calendar')->whereDate('date', '=', $date);
+            }
+        )->get();
+    }
+
+    protected static function getRawDatedServiceJourneys(string $date): Collection
+    {
+        return self::buildRawJourneysQuery($date)
+            ->join('netex_dated_service_journeys as dsj', 'dsj.service_journey_ref', '=', 'journey.id')
+            ->join('netex_operating_days as days', 'dsj.operating_day_ref', '=', 'days.id')
+            ->where('days.calendar_date', $date)
+            ->get();
+    }
+
+    protected static function buildRawJourneysQuery(string $date): Builder
     {
         return DB::table('netex_vehicle_journeys', 'journey')
             ->select([
@@ -124,12 +149,8 @@ class RouteBase
             ->join('netex_journey_patterns as pattern', 'journey.journey_pattern_ref', '=', 'pattern.id')
             ->join('netex_routes as route', 'pattern.route_ref', 'route.id')
             ->join('netex_lines as line', 'journey.line_ref', 'line.id')
-            ->whereIn('journey.calendar_ref', function (\Illuminate\Database\Query\Builder $query) use ($date) {
-                $query->select('ref')->from('netex_calendar')->whereDate('date', '=', $date);
-            })
             ->orderBy('line.private_code')
-            ->orderBy('journey.private_code')
-            ->get();
+            ->orderBy('journey.private_code');
     }
 
     /**
