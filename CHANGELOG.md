@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.3.0] – 2024-09-18
 
 ### Added
 - Support for DatedServiceJourney.
