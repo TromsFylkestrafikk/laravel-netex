@@ -68,7 +68,7 @@ class NetexLineImporter extends NetexImporterBase
             'transport_mode' => $xml->TransportMode,
             'transport_submode' => $xml->TransportSubmode->children()[0],
             'public_code' => $xml->PublicCode,
-            'private_code' => $xml->PrivateCode,
+            'private_code' => $xml->PrivateCode ?: ((int) $xml->PublicCode),
             'operator_ref' => isset($xml->OperatorRef) ? $xml->OperatorRef['ref'] : null,
             'line_group_ref' => $xml->RepresentedByGroupRef['ref'],
         ];
@@ -92,13 +92,15 @@ class NetexLineImporter extends NetexImporterBase
             ]);
         }
 
-        foreach ($xml->linksInSequence->ServiceLinkInJourneyPattern as $link) {
-            $this->dumpers['JourneyPatternLinks']->addRecord([
-                'id' => $link['id'],
-                'journey_pattern_ref' => $jpId,
-                'order' => $link->attributes()->order,
-                'service_link_ref' => $link->ServiceLinkRef['ref'],
-            ]);
+        if ($xml->linksInSequence->ServiceLinkInJourneyPattern) {
+            foreach ($xml->linksInSequence->ServiceLinkInJourneyPattern as $link) {
+                $this->dumpers['JourneyPatternLinks']->addRecord([
+                    'id' => $link['id'],
+                    'journey_pattern_ref' => $jpId,
+                    'order' => $link->attributes()->order,
+                    'service_link_ref' => $link->ServiceLinkRef['ref'],
+                ]);
+            }
         }
 
         return [
