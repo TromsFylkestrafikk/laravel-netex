@@ -14,11 +14,9 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $journey_pattern_ref
  * @property int $operator_ref
  * @property string $line_ref
- * @property int $calendar_ref
  * @method static \Illuminate\Database\Eloquent\Builder|VehicleJourney newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|VehicleJourney newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|VehicleJourney query()
- * @method static \Illuminate\Database\Eloquent\Builder|VehicleJourney whereCalendarRef($value)
  * @method static \Illuminate\Database\Eloquent\Builder|VehicleJourney whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|VehicleJourney whereJourneyPatternRef($value)
  * @method static \Illuminate\Database\Eloquent\Builder|VehicleJourney whereLineRef($value)

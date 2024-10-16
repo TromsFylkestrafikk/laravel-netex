@@ -29,6 +29,7 @@ class NetexLineImporter extends NetexImporterBase
             'path' => ['TimetableFrame', 'vehicleJourneys', 'ServiceJourney'],
             'table' => 'netex_vehicle_journeys',
         ],
+        'JourneyDayType' => ['table' => 'netex_journey_day_types'],
         'DatedServiceJourney' => [
             'path' => ['TimetableFrame', 'vehicleJourneys', 'DatedServiceJourney'],
             'table' => 'netex_dated_service_journeys',
@@ -120,6 +121,15 @@ class NetexLineImporter extends NetexImporterBase
             ]);
         }
 
+        if (isset($xml->dayTypes)) {
+            foreach ($xml->dayTypes->DayTypeRef as $dayTypeRef) {
+                $this->dumpers['JourneyDayType']->addRecord([
+                    'service_journey_id' => $journeyId,
+                    'day_type_ref' => $dayTypeRef['ref'],
+                ]);
+            }
+        }
+
         return [
             'id' => $journeyId,
             'name' => $xml->Name,
@@ -127,7 +137,6 @@ class NetexLineImporter extends NetexImporterBase
             'journey_pattern_ref' => $xml->JourneyPatternRef['ref'],
             'operator_ref' => $xml->OperatorRef['ref'],
             'line_ref' => $xml->LineRef['ref'],
-            'calendar_ref' => isset($xml->dayTypes) ? $xml->dayTypes->DayTypeRef['ref'] : null,
         ];
     }
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+### Fixed
+- ServiceJourneys can have several DayTypeRef's.
+
 ## [0.3.0] – 2024-09-18
 
 ### Added

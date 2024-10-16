@@ -112,12 +112,11 @@ class RouteBase
 
     protected static function getRawCalendarJourneys(string $date): Collection
     {
-        return self::buildRawJourneysQuery($date)->whereIn(
-            'journey.calendar_ref',
-            function (Builder $query) use ($date) {
-                $query->select('ref')->from('netex_calendar')->whereDate('date', '=', $date);
-            }
-        )->get();
+        return self::buildRawJourneysQuery($date)
+            ->join('netex_journey_day_types as jdt', 'jdt.service_journey_id', '=', 'journey.id')
+            ->join('netex_calendar as cal', 'jdt.day_type_ref', '=', 'cal.ref')
+            ->whereDate('cal.date', '=', $date)
+            ->get();
     }
 
     protected static function getRawDatedServiceJourneys(string $date): Collection
