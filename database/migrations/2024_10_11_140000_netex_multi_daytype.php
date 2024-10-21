@@ -17,6 +17,7 @@ return new class extends Migration
             $table->id()->comment('Laravel internal ID');
             $table->char('service_journey_id')->index()->comment('References netex_vehicle_journey.id');
             $table->char('day_type_ref')->comment('Daytype reference. This can be joined with `netex_calendar.ref` to retrieve dates.');
+            $table->unique(['service_journey_id', 'day_type_ref']);
         });
 
         Schema::table('netex_vehicle_journeys', function (Blueprint $table) {
