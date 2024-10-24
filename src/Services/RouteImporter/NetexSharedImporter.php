@@ -233,7 +233,6 @@ class NetexSharedImporter extends NetexImporterBase
                 ]);
             }
         }
-        $this->dumpers['Calendar']->flush();
     }
 
     /**
