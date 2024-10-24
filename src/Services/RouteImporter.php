@@ -6,12 +6,10 @@ use Exception;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use SimpleXMLElement;
 use TromsFylkestrafikk\Netex\Models\Import;
 use TromsFylkestrafikk\Netex\Services\RouteImporter\NetexImporterBase;
 use TromsFylkestrafikk\Netex\Services\RouteImporter\NetexLineImporter;
 use TromsFylkestrafikk\Netex\Services\RouteImporter\NetexSharedImporter;
-use TromsFylkestrafikk\Xml\ChristmasTreeParser;
 
 /**
  * Heavy lifting tool for stuffing NeTEx data into sql tables.
@@ -36,16 +34,17 @@ class RouteImporter
         'netex_notices',
 
         // Line data tables
-        'netex_vehicle_journeys',
         'netex_dated_service_journeys',
-        'netex_passing_times',
-        'netex_journey_patterns',
-        'netex_journey_pattern_stop_point',
+        'netex_journey_day_types',
         'netex_journey_pattern_link',
-        'netex_routes',
-        'netex_route_point_sequence',
+        'netex_journey_pattern_stop_point',
+        'netex_journey_patterns',
         'netex_lines',
         'netex_notice_assignments',
+        'netex_passing_times',
+        'netex_route_point_sequence',
+        'netex_routes',
+        'netex_vehicle_journeys',
     ];
 
     /**
