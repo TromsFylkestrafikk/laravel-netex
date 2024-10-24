@@ -3,6 +3,7 @@
 ## [Unreleased]
 ### Fixed
 - ServiceJourneys can have several DayTypeRef's.
+- `netex_calendar` is properly flushed after import.
 
 ## [0.3.0] – 2024-09-18
 
