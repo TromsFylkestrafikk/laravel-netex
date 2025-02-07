@@ -80,7 +80,7 @@ class RouteSetDiffDetector extends RouteBase
                 [
                     'id' => $callId,
                     'active_journey_id' => $jRec['id'],
-                    'line_private_code' => $jRec['line_private_code'],
+                    'line_public_code' => $jRec['line_public_code'],
                 ]
             );
 

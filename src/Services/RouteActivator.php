@@ -525,7 +525,7 @@ class RouteActivator extends RouteBase
             [
                 'id' => self::makeCallId($rawCall, $jRec['id']),
                 'active_journey_id' => $jRec['id'],
-                'line_private_code' => $jRec['line_private_code'],
+                'line_public_code' => $jRec['line_public_code'],
             ]
         ));
     }

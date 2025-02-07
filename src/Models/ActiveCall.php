@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property string $id Unique ID of call for stop/journey/day/order
  * @property string $active_journey_id
- * @property int $line_private_code Internal numeric line number
+ * @property int $line_public_code Publicly facing line number
  * @property string $destination_display Interim/current destination. Often changed during a journey
  * @property int $order Order of call during journey
  * @property string $stop_quay_id Stop place quay ID
@@ -67,7 +67,7 @@ class ActiveCall extends Model
      */
     protected $fillable = [
         'active_journey_id',
-        'line_private_code',
+        'line_public_code',
         'destination_display',
         'order',
         'stop_quay_id',
