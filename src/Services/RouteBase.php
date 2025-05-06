@@ -46,8 +46,7 @@ class RouteBase
         return implode(':', [
             static::getCodespace($journeyRecord['vehicle_journey_id']),
             $journeyRecord['date'],
-            $journeyRecord['line_private_code'],
-            $journeyRecord['private_code'],
+            static::internalServiceJourneyId($journeyRecord)
         ]);
     }
 
@@ -58,8 +57,8 @@ class RouteBase
     protected static function makeCallId(array $callRecord, $journeyRecord): string
     {
         return (is_array($journeyRecord)
-                ? self::makeJourneyId($journeyRecord)
-                : $journeyRecord)
+            ? self::makeJourneyId($journeyRecord)
+            : $journeyRecord)
             . ':'
             . $callRecord['order'];
     }
@@ -70,6 +69,23 @@ class RouteBase
     protected static function getCodespace(string $netexId): string
     {
         return explode(':', $netexId)[0];
+    }
+
+    protected static function getServiceJourneyId(string $netexId): string
+    {
+        return explode(':', $netexId)[2];
+    }
+
+    protected static function getLineId(string $lineId): string
+    {
+        return explode(':', $lineId)[2];
+    }
+
+    protected static function internalServiceJourneyId(array $journeyRecord): string
+    {
+        $lineId = static::getLineId($journeyRecord['line_id']);
+        $journeyId = static::getServiceJourneyId($journeyRecord['vehicle_journey_id']);
+        return $lineId . '_' . $journeyId;
     }
 
     /**
