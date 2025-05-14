@@ -4,6 +4,7 @@
 
 ### Changed
 
+- `makeJourneyId` now combines full lineRef-id and serviceJourney-id for journeyId
 - The `netex_active_calls.line_private_code` column has been replaced with
   `netex_active_calls.line_private_code` due to `private` code beeing optional in NeTEx
 
