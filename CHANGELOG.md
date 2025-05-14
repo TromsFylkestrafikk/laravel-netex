@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- `makeJourneyId` now combines full lineRef-id and serviceJourneyID for journeyId
+
 ### Changed
 
 - The `netex_active_calls.line_private_code` column has been replaced with
