@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-- `makeJourneyId` now combines full lineRef-id and serviceJourneyID for journeyId
+- `makeJourneyId` now combines full lineRef-id and serviceJourney-id for journeyId
 
 ### Changed
 
