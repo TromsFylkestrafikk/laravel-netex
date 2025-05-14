@@ -85,7 +85,7 @@ class RouteBase
     {
         $lineId = static::getLineId($journeyRecord['line_id']);
         $journeyId = static::getServiceJourneyId($journeyRecord['vehicle_journey_id']);
-        return $lineId . '_' . $journeyId;
+        return $lineId . ':' . $journeyId;
     }
 
     /**
