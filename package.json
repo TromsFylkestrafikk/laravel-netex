@@ -1,6 +1,6 @@
 {
     "name": "laravel-netex",
-    "version": "0.3.3",
+    "version": "0.3.4",
     "description": "NeTEx parser and database for laravel",
     "main": "index.js",
     "contributors": [

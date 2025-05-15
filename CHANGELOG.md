@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.4] – 2025-05-15
+
+### Fixed
+
+- Allow php 8.1 (for Ubuntu 22.04 LTS)
+
 ## [0.3.3] – 2025-05-15
 
 ### Fixed
