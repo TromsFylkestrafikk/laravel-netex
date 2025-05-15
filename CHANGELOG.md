@@ -1,15 +1,23 @@
 # Changelog
 
-## [0.3.2] – 2025-05-15
+## [0.3.3] – 2025-05-15
 
-### Changed
+### Fixed
 
 - `makeJourneyId` now combines full lineRef-id and serviceJourney-id for
   journeyId.
+
+### Changed
+
+- Support for Laravel 12.
+
+## [0.3.2] – 2025-02-07
+
+### Changed
+
 - The `netex_active_calls.line_private_code` column has been replaced with
   `netex_active_calls.line_private_code` due to `private` code beeing optional
   in NeTEx.
-- Support for Laravel 12.
 
 ## [0.3.1] – 2024-08-18
 
