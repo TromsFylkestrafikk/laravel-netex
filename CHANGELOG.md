@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Removed line ID as part of active journey and active call IDs.
+
 ## [0.3.4] – 2025-05-15
 
 ### Fixed
