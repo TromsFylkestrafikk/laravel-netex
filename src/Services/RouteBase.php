@@ -43,11 +43,8 @@ class RouteBase
      */
     protected static function makeJourneyId(array $journeyRecord): string
     {
-        return implode(':', [
-            static::getCodespace($journeyRecord['vehicle_journey_id']),
-            $journeyRecord['date'],
-            static::internalServiceJourneyId($journeyRecord)
-        ]);
+        list($codespace,, $journeyUniquePart) = explode(':', $journeyRecord['vehicle_journey_id']);
+        return implode(':', [$codespace, $journeyRecord['date'], $journeyUniquePart]);
     }
 
     /**
@@ -61,31 +58,6 @@ class RouteBase
             : $journeyRecord)
             . ':'
             . $callRecord['order'];
-    }
-
-    /**
-     * Extract the codespace portion of a NeTEx identifier
-     */
-    protected static function getCodespace(string $netexId): string
-    {
-        return explode(':', $netexId)[0];
-    }
-
-    protected static function getServiceJourneyId(string $netexId): string
-    {
-        return explode(':', $netexId)[2];
-    }
-
-    protected static function getLineId(string $lineId): string
-    {
-        return explode(':', $lineId)[2];
-    }
-
-    protected static function internalServiceJourneyId(array $journeyRecord): string
-    {
-        $lineId = static::getLineId($journeyRecord['line_id']);
-        $journeyId = static::getServiceJourneyId($journeyRecord['vehicle_journey_id']);
-        return $lineId . ':' . $journeyId;
     }
 
     /**
