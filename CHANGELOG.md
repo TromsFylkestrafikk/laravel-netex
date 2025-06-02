@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added descriptive error message when route data is incomplete.
+
 ### Changed
 
 - Removed line ID as part of active journey and active call IDs.

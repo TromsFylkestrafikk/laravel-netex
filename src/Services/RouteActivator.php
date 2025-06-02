@@ -4,6 +4,7 @@ namespace TromsFylkestrafikk\Netex\Services;
 
 use Closure;
 use DateInterval;
+use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -493,6 +494,9 @@ class RouteActivator extends RouteBase
         }
         $first = $rawCalls->first();
         $last = $rawCalls->last();
+        if (!$first || !$last) {
+            throw new Exception("Routedata is incomplete. Possible reasons include missing stop places. Make sure all neccessary stop places for route set are imported.");
+        }
         $jRec['first_stop_quay_id'] = $first->stop_quay_id;
         $jRec['last_stop_quay_id'] = $last->stop_quay_id;
         $jRec['start_at'] = $first->departure_time;
