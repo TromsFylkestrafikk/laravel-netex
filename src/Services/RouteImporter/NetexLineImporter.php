@@ -92,13 +92,15 @@ class NetexLineImporter extends NetexImporterBase
             ]);
         }
 
-        foreach ($xml->linksInSequence->ServiceLinkInJourneyPattern as $link) {
-            $this->dumpers['JourneyPatternLinks']->addRecord([
-                'id' => $link['id'],
-                'journey_pattern_ref' => $jpId,
-                'order' => $link->attributes()->order,
-                'service_link_ref' => $link->ServiceLinkRef['ref'],
-            ]);
+        if ($xml->linksInSequence->ServiceLinkInJourneyPattern) {
+            foreach ($xml->linksInSequence->ServiceLinkInJourneyPattern as $link) {
+                $this->dumpers['JourneyPatternLinks']->addRecord([
+                    'id' => $link['id'],
+                    'journey_pattern_ref' => $jpId,
+                    'order' => $link->attributes()->order,
+                    'service_link_ref' => $link->ServiceLinkRef['ref'],
+                ]);
+            }
         }
 
         return [
@@ -112,6 +114,17 @@ class NetexLineImporter extends NetexImporterBase
     {
         $journeyId = (string) $xml['id'];
 
+        // @todo. Flexible lines aren't required to have these, but this is not
+        // supported in laravel-netex for now.
+        if (
+            !($xml->PrivateCode &&
+              $xml->JourneyPatternRef['ref'] &&
+              $xml->OperatorRef['ref'] &&
+              $xml->LineRef['ref']
+            )
+        ) {
+            return null;
+        }
         foreach ($xml->passingTimes->TimetabledPassingTime as $time) {
             $this->dumpers['TimetabledPassingTime']->addRecord([
                 'vehicle_journey_ref' => $journeyId,

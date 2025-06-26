@@ -81,7 +81,7 @@ class NetexSharedImporter extends NetexImporterBase
         $this->version = (string) $xml['version'];
         return [
             'id' => $xml['id'],
-            'company_number' => $xml->CompanyNumber,
+            'company_number' => $xml->CompanyNumber ?? null,
             'legal_name' => $xml->LegalName,
             'name' => $xml->Name,
         ];

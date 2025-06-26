@@ -9,6 +9,8 @@
 ### Changed
 
 - Removed line ID as part of active journey and active call IDs.
+- Made adjustments to allow parsing of data sets with flexible line sets (not
+  imported).
 
 ## [0.3.4] – 2025-05-15
 
